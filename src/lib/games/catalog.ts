@@ -501,9 +501,13 @@ export function loadSteamImportSummary(steamId: number, signal: AbortSignal): Pr
     signal,
   );
 }
-/** Drops a clip URL that failed to play, and any lookup still running, so the next load
- *  asks Steam again rather than joining an attempt from before the retry. */
+const clipLookups = new Map<number, AbortController>();
+
+/** Drops a clip URL that failed to play, and stops any lookup still running, so the next
+ *  load asks Steam again rather than joining an attempt from before the retry. */
 export function forgetGameMicrotrailer(steamId: number): void {
+  clipLookups.get(steamId)?.abort();
+  clipLookups.delete(steamId);
   cache.delete(`microtrailer:${steamId}`);
   pending.delete(`microtrailer:${steamId}`);
 }
@@ -511,6 +515,8 @@ export function forgetGameMicrotrailer(steamId: number): void {
 export function loadGameMicrotrailer(steamId: number): Promise<string> {
   if (!Number.isSafeInteger(steamId) || steamId <= 0) return Promise.resolve("");
   return cached(`microtrailer:${steamId}`, async () => {
+    const lookup = new AbortController();
+    clipLookups.set(steamId, lookup);
     const input = encodeURIComponent(
       JSON.stringify({
         ids: [{ appid: steamId }],
@@ -518,13 +524,18 @@ export function loadGameMicrotrailer(steamId: number): Promise<string> {
         data_request: { include_trailers: true },
       }),
     );
-    return parseSteamMicrotrailer(
-      await request(
-        `IStoreBrowseService/GetItems/v1/?input_json=${input}`,
-        "https://api.steampowered.com/",
-      ),
-      steamId,
-    );
+    try {
+      return parseSteamMicrotrailer(
+        await request(
+          `IStoreBrowseService/GetItems/v1/?input_json=${input}`,
+          "https://api.steampowered.com/",
+          lookup.signal,
+        ),
+        steamId,
+      );
+    } finally {
+      if (clipLookups.get(steamId) === lookup) clipLookups.delete(steamId);
+    }
   });
 }
 export function searchGames(query: string): Promise<GameSummary[]> {

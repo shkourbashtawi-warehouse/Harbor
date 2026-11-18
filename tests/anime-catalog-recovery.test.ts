@@ -250,6 +250,24 @@ test("videos bodies with no usable promo id, or no data, never cool the provider
   assert.equal(primary.at(-1), `${ANIME_CATALOG_BASE}/seasons/now`);
 });
 
+test("an unparseable videos body never cools the provider down", async () => {
+  const primary: string[] = [];
+  const client = createAnimeCatalogClient({
+    intervalMs: 0,
+    fallbackIntervalMs: 0,
+    fetch: async (url) => {
+      primary.push(String(url));
+      return String(url).endsWith("/videos")
+        ? new Response("{not json", { headers: { "content-type": "application/json" } })
+        : json([{ mal_id: 1 }]);
+    },
+    fallbackFetch: async () => new Response("{not json"),
+  });
+  await assert.rejects(client("/anime/5/videos"));
+  await client("/seasons/now");
+  assert.equal(primary.at(-1), `${ANIME_CATALOG_BASE}/seasons/now`);
+});
+
 test("catalog rejects unrelated destinations", async () => {
   const client = createAnimeCatalogClient({
     fetch: async () => {

@@ -277,7 +277,8 @@ export function GameDetailPage({
   const [pricesOpen, setPricesOpen] = useState(false);
   const [trailerOpen, setTrailerOpen] = useState(false);
   const trailerOpener = useRef<HTMLElement | null>(null),
-    trailerFocusFrame = useRef<number | null>(null);
+    trailerFocusFrame = useRef<number | null>(null),
+    detailPage = useRef<HTMLElement>(null);
   useEffect(() => setTrailerOpen(false), [game.id]);
   // Views stay mounted while hidden; the theater is portaled, so it must not outlive the page.
   useEffect(() => {
@@ -411,7 +412,15 @@ export function GameDetailPage({
     setTrailerOpen(false);
     trailerFocusFrame.current = requestAnimationFrame(() => {
       trailerFocusFrame.current = null;
-      trailerOpener.current?.focus({ preventScroll: true });
+      // The opener can be gone (the gallery re-rendered); fall back to the hero's trailer
+      // button, then the page heading.
+      const opener = trailerOpener.current;
+      const page = detailPage.current;
+      (opener?.isConnected
+        ? opener
+        : (page?.querySelector<HTMLElement>(".games-detail-trailer-action") ??
+          page?.querySelector<HTMLElement>("h1"))
+      )?.focus({ preventScroll: true });
     });
   };
   const installed = library.scan?.games.find((item) => item.appId === steamId);
@@ -440,7 +449,7 @@ export function GameDetailPage({
     installed?.artwork?.libraryHero ||
     (classicEdition ? WOW_CLASSIC_ART.backdrop : "");
   return (
-    <article className="games-detail">
+    <article ref={detailPage} className="games-detail">
       <section className="games-hero games-detail-hero">
         <GameArt
           className="games-hero-art"

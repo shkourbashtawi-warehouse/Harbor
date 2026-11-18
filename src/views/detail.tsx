@@ -617,7 +617,9 @@ export function DetailView({
   // In the desktop theater MyAnimeList can be the only catalog with a playable trailer, so it is
   // asked up front when nothing else has one; otherwise it waits until the theater opens.
   const malTrailers = useMalTrailers(
-    isAnime ? (animeCanonicalId ?? meta.id) : undefined,
+    // A page that already names its MyAnimeList entry keeps it; others map through the
+    // canonical id.
+    isAnime ? (meta.id.startsWith("mal:") ? meta.id : (animeCanonicalId ?? meta.id)) : undefined,
     trailerOpen || (NATIVE_TRAILERS && !trailerCandidates.some((id) => isYoutubeId(id.trim()))),
   );
   const trailerSources = useMemo(() => {

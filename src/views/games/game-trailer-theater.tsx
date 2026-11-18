@@ -149,7 +149,8 @@ export function GameTrailerTheater({
         ? "best"
         : height
           ? (`${height}p` as Quality)
-          : resolveTrailerQuality(settings.trailerQuality)
+          : // An explicit Auto in the theater means auto, whatever the app preference says.
+            resolveTrailerQuality("auto")
       : undefined;
   const requestKey = source ? `${source.key}@${youtubeQuality ?? ""}` : "";
   // A manual revival restarts the whole source; a playback retry is spent per quality, so a
@@ -165,6 +166,9 @@ export function GameTrailerTheater({
   };
 
   useEffect(() => {
+    // Only this selection's own answer may play; an earlier one with the same key (picked
+    // again later) could hold a link that has since expired.
+    setResolved(null);
     if (!source || source.kind === "steam") return;
     let current = true;
     // A failure belongs to the trailer that was asked for, never to whatever is selected

@@ -30,6 +30,31 @@ test("title trailers keep listing order, the first catalog and the first name", 
   ]);
 });
 
+test("MyAnimeList promo ids are validated whole, never trimmed down", () => {
+  assert.deepEqual(
+    malPromosFromResponse({
+      promo: [
+        {
+          title: "Long",
+          trailer: { embed_url: "https://www.youtube.com/embed/abcdefghijkLONGER" },
+        },
+        {
+          title: "Bad id",
+          trailer: {
+            youtube_id: "nope",
+            embed_url: "https://www.youtube.com/embed/fffffffffff?autoplay=1",
+          },
+        },
+        { title: "Padded", trailer: { youtube_id: " ggggggggggg " } },
+      ],
+    }),
+    [
+      { id: "fffffffffff", name: "Bad id" },
+      { id: "ggggggggggg", name: "Padded" },
+    ],
+  );
+});
+
 test("MyAnimeList promos check field types before reading them", () => {
   assert.deepEqual(
     malPromosFromResponse({

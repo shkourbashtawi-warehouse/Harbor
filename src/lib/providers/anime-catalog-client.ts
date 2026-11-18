@@ -3,7 +3,9 @@
 export const ANIME_CATALOG_BASE = "https://api.tenrai.org/v1";
 export const ANIME_CATALOG_FALLBACK = "https://jikanfortheweebs.midnightignite.me/v4";
 
-const PROMO_EMBED_ID = /\/embed\/([\w-]{11})/;
+// The whole embed segment, so a longer id is rejected rather than cut down to 11 characters.
+const PROMO_EMBED_ID = /\/embed\/([\w-]{11})(?:[?#/&]|$)/;
+const YOUTUBE_ID = /^[\w-]{11}$/;
 
 /** The YouTube id of a MyAnimeList promo entry; most list only an embed URL. Field types are
  *  checked, so one malformed entry never throws. */
@@ -13,7 +15,8 @@ export function malPromoYoutubeId(entry: unknown): string | undefined {
     | null
     | undefined;
   if (typeof trailer !== "object" || trailer === null) return undefined;
-  if (typeof trailer.youtube_id === "string" && trailer.youtube_id) return trailer.youtube_id;
+  const direct = typeof trailer.youtube_id === "string" ? trailer.youtube_id.trim() : "";
+  if (YOUTUBE_ID.test(direct)) return direct;
   return typeof trailer.embed_url === "string"
     ? trailer.embed_url.match(PROMO_EMBED_ID)?.[1]
     : undefined;
@@ -93,11 +96,12 @@ export function createAnimeCatalogClient(
           if (!response.ok) {
             throw new Error(`Anime catalog HTTP ${response.status}`);
           }
-          const payload: unknown = await response.json();
           // An anime's videos come back as one object of promo, episode and music lists. A
-          // bad body for one title says nothing about the provider's other endpoints.
+          // bad body for one title, unparseable JSON included, says nothing about the
+          // provider's other endpoints.
           const videos = /^\/anime\/\d+\/videos(?:\?|$)/.test(path);
           if (videos) retry = 0;
+          const payload: unknown = await response.json();
           if (
             !payload ||
             typeof payload !== "object" ||
