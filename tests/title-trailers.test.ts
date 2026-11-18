@@ -30,6 +30,18 @@ test("title trailers keep listing order, the first catalog and the first name", 
   ]);
 });
 
+test("MyAnimeList promos check field types before reading them", () => {
+  assert.deepEqual(
+    malPromosFromResponse({
+      promo: [
+        { title: "Bad", trailer: { embed_url: 42 } },
+        { title: 7, trailer: { youtube_id: "eeeeeeeeeee" } },
+      ],
+    } as never),
+    [{ id: "eeeeeeeeeee", name: "" }],
+  );
+});
+
 test("MyAnimeList promos skip malformed entries and keep the usable ones", () => {
   assert.deepEqual(
     malPromosFromResponse({

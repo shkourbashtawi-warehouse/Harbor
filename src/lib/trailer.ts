@@ -141,9 +141,9 @@ function resolveStream(
       if (cached === entry) {
         const now = Date.now();
         const ttl = now + STREAM_CACHE_TTL_MS;
-        cached.expires = Number.isFinite(expiry)
-          ? Math.max(now + 30_000, Math.min(ttl, expiry * 1000 - 30_000))
-          : ttl;
+        // Reusable only while the signed URLs have a safety margin left; one already inside it
+        // still serves this request but is never handed to another.
+        cached.expires = Number.isFinite(expiry) ? Math.min(ttl, expiry * 1000 - 30_000) : ttl;
       }
       const options: { transcode?: boolean; fragmentedMp4: boolean; audioUrl?: string } = {
         transcode: stream.transcode,

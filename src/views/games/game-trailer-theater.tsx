@@ -276,8 +276,9 @@ export function GameTrailerTheater({
     target?.focus({ preventScroll: true });
     // A stand-in chosen while loading gives way to play/pause once the trailer arrives.
     placed.current = url ? null : (target ?? null);
-    if (url) focused.current = true;
-  }, [url]);
+    focused.current = true;
+    // loadKey: a retry can replace the player while the URL stays the same.
+  }, [url, loadKey]);
   useEffect(() => {
     queue.current
       ?.querySelector<HTMLElement>("[aria-current=true]")
@@ -424,7 +425,8 @@ export function GameTrailerTheater({
                   <GameHeroTrailerMenu
                     qualities={qualityChoices}
                     choice={choice}
-                    height={height}
+                    // A "best" request is uncapped: no fixed rendition is the one playing.
+                    height={youtubeQuality === "best" ? undefined : height}
                     onQuality={pick}
                     rate={rate}
                     onRate={setRate}

@@ -3,9 +3,20 @@
 export const ANIME_CATALOG_BASE = "https://api.tenrai.org/v1";
 export const ANIME_CATALOG_FALLBACK = "https://jikanfortheweebs.midnightignite.me/v4";
 
-function isPromoEntry(entry: unknown): boolean {
-  const trailer = (entry as { trailer?: unknown } | null)?.trailer;
-  return typeof trailer === "object" && trailer !== null;
+const PROMO_EMBED_ID = /\/embed\/([\w-]{11})/;
+
+/** The YouTube id of a MyAnimeList promo entry; most list only an embed URL. Field types are
+ *  checked, so one malformed entry never throws. */
+export function malPromoYoutubeId(entry: unknown): string | undefined {
+  const trailer = (entry as { trailer?: unknown } | null)?.trailer as
+    | { youtube_id?: unknown; embed_url?: unknown }
+    | null
+    | undefined;
+  if (typeof trailer !== "object" || trailer === null) return undefined;
+  if (typeof trailer.youtube_id === "string" && trailer.youtube_id) return trailer.youtube_id;
+  return typeof trailer.embed_url === "string"
+    ? trailer.embed_url.match(PROMO_EMBED_ID)?.[1]
+    : undefined;
 }
 
 export function catalogRetryDelay(value: string | null, now: number): number {
@@ -83,6 +94,10 @@ export function createAnimeCatalogClient(
             throw new Error(`Anime catalog HTTP ${response.status}`);
           }
           const payload: unknown = await response.json();
+          // An anime's videos come back as one object of promo, episode and music lists. A
+          // bad body for one title says nothing about the provider's other endpoints.
+          const videos = /^\/anime\/\d+\/videos(?:\?|$)/.test(path);
+          if (videos) retry = 0;
           if (
             !payload ||
             typeof payload !== "object" ||
@@ -92,8 +107,6 @@ export function createAnimeCatalogClient(
             throw new Error("Invalid anime catalog response");
           }
           const detail = /^\/anime\/\d+(?:\/full)?(?:\?|$)/.test(path);
-          // An anime's videos come back as one object of promo, episode and music lists.
-          const videos = /^\/anime\/\d+\/videos(?:\?|$)/.test(path);
           const data = payload.data as object;
           const promo = (data as { promo?: unknown }).promo;
           if (
@@ -102,13 +115,11 @@ export function createAnimeCatalogClient(
                 typeof data !== "object" ||
                 !Array.isArray(promo) ||
                 // Entries present but none usable: let the other provider answer instead.
-                (promo.length > 0 && !promo.some(isPromoEntry))
+                (promo.length > 0 && !promo.some((entry) => !!malPromoYoutubeId(entry)))
               : detail
                 ? Array.isArray(data) || typeof data !== "object" || !("mal_id" in data)
                 : !Array.isArray(data)
           ) {
-            // One title's odd videos body says nothing about the provider's other endpoints.
-            if (videos) retry = 0;
             throw new Error("Invalid anime catalog data");
           }
           provider.unavailableUntil = 0;

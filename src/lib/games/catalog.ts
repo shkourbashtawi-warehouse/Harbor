@@ -45,14 +45,18 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   if (held && Date.now() - held.at < TTL) return held.value as T;
   const existing = pending.get(key);
   if (existing) return existing as Promise<T>;
-  const task = load()
+  // Only this lookup's own entries: a forgotten lookup may finish after its replacement began.
+  const task: Promise<T> = load()
     .then((value) => {
+      if (pending.get(key) !== task) return value;
       cache.delete(key);
       cache.set(key, { at: Date.now(), value });
       if (cache.size > 80) cache.delete(cache.keys().next().value!);
       return value;
     })
-    .finally(() => pending.delete(key));
+    .finally(() => {
+      if (pending.get(key) === task) pending.delete(key);
+    });
   pending.set(key, task);
   return task;
 }
@@ -497,9 +501,11 @@ export function loadSteamImportSummary(steamId: number, signal: AbortSignal): Pr
     signal,
   );
 }
-/** Drops a resolved clip URL that failed to play, so the next load asks Steam again. */
+/** Drops a clip URL that failed to play, and any lookup still running, so the next load
+ *  asks Steam again rather than joining an attempt from before the retry. */
 export function forgetGameMicrotrailer(steamId: number): void {
   cache.delete(`microtrailer:${steamId}`);
+  pending.delete(`microtrailer:${steamId}`);
 }
 
 export function loadGameMicrotrailer(steamId: number): Promise<string> {

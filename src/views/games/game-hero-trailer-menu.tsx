@@ -72,8 +72,13 @@ export function GameHeroTrailerMenu({
     if (open) popover.current?.querySelector<HTMLElement>("button:not([hidden])")?.focus();
   }, [open, panel]);
 
+  // "Best" (no cap) comes only from the app setting; it is not any one listed rendition.
   const qualityLabel = (value: HeroTrailerQuality) =>
-    value === "auto" ? t("games.player.qualityAuto") : `${value}p`;
+    value === "auto"
+      ? t("games.player.qualityAuto")
+      : value === Number.MAX_SAFE_INTEGER
+        ? t("Best")
+        : `${value}p`;
   const rateLabel = (value: number) => (value === 1 ? t("games.player.speedNormal") : `${value}`);
   const rows: { id: Panel; icon: typeof Gauge; label: string; value: string; show: boolean }[] = [
     {

@@ -304,10 +304,9 @@ export async function cinemetaDetails(meta: Meta): Promise<TmdbDetail | null> {
       meta.type === "series" ? "series" : "movie",
       meta.id,
     );
-    // Add-on metadata names its add-on; anything else stays unattributed.
-    return full
-      ? toDetail(full, meta.type === "series" ? "tv" : "movie", [], full.addonOrigin?.name)
-      : null;
+    // Merged add-on metadata does not say which add-on supplied the trailers, so they stay
+    // unattributed rather than credited to whichever add-on answered first.
+    return full ? toDetail(full, meta.type === "series" ? "tv" : "movie", []) : null;
   }
   const imdbId = extractImdbId(meta.id);
   if (!imdbId) return null;

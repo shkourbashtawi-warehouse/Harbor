@@ -227,6 +227,29 @@ test("a videos body without usable promos falls back without cooling the provide
   assert.equal(primary.at(-1), `${ANIME_CATALOG_BASE}/seasons/now`);
 });
 
+test("videos bodies with no usable promo id, or no data, never cool the provider down", async () => {
+  const primary: string[] = [];
+  const client = createAnimeCatalogClient({
+    intervalMs: 0,
+    fallbackIntervalMs: 0,
+    fetch: async (url) => {
+      primary.push(String(url));
+      if (String(url).endsWith("/3/videos")) return json({ promo: [{ trailer: {} }] });
+      if (String(url).endsWith("/4/videos")) return Response.json({ data: null });
+      return json([{ mal_id: 1 }]);
+    },
+    fallbackFetch: async (url) =>
+      String(url).endsWith("/3/videos")
+        ? json({ promo: [{ trailer: { embed_url: "https://www.youtube.com/embed/abcdefghijk" } }] })
+        : Response.json({ data: null }),
+  });
+  const three = await client<Parameters<typeof malPromosFromResponse>[0]>("/anime/3/videos");
+  assert.deepEqual(malPromosFromResponse(three.data), [{ id: "abcdefghijk", name: "" }]);
+  await assert.rejects(client("/anime/4/videos"));
+  await client("/seasons/now");
+  assert.equal(primary.at(-1), `${ANIME_CATALOG_BASE}/seasons/now`);
+});
+
 test("catalog rejects unrelated destinations", async () => {
   const client = createAnimeCatalogClient({
     fetch: async () => {

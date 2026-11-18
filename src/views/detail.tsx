@@ -202,6 +202,7 @@ import { useScrollUpTrailer } from "./detail/use-scroll-up-trailer";
 import { prefetchTrailer as warmTrailer, resolveTrailerQuality } from "@/lib/trailer";
 import { mergeTrailerCandidates } from "@/lib/trailer-candidates";
 import { titleTrailerSources, type TrailerListing } from "@/lib/title-trailers";
+import { isYoutubeId } from "@/lib/games/hero-trailer";
 import { useMalTrailers } from "@/lib/mal-trailers";
 import { GameTrailerTheater } from "./games/game-trailer-theater";
 
@@ -613,11 +614,11 @@ export function DetailView({
     franchise,
   ]);
   const trailerCandidate = trailerCandidates[0] ?? null;
-  // In the desktop theater MyAnimeList can be the only catalog with a trailer, so it is asked
-  // up front when nothing else has one; otherwise it waits until the theater opens.
+  // In the desktop theater MyAnimeList can be the only catalog with a playable trailer, so it is
+  // asked up front when nothing else has one; otherwise it waits until the theater opens.
   const malTrailers = useMalTrailers(
     isAnime ? (animeCanonicalId ?? meta.id) : undefined,
-    trailerOpen || (NATIVE_TRAILERS && !trailerCandidate),
+    trailerOpen || (NATIVE_TRAILERS && !trailerCandidates.some((id) => isYoutubeId(id.trim()))),
   );
   const trailerSources = useMemo(() => {
     // trailerCandidates already holds the playback order; the listings only name each video
@@ -659,6 +660,12 @@ export function DetailView({
       ...trailerCandidates.map((id) => ({
         via: known.get(id)?.via,
         videos: [{ id, name: known.get(id)?.name }],
+      })),
+      // The candidates keep their lead; other catalogs' distinct trailers follow them, since the
+      // theater can offer every one (the browser overlay still plays the first candidate).
+      ...[...known.values()].map((source) => ({
+        via: source.via,
+        videos: [{ id: source.id, name: source.name }],
       })),
       { via: "MyAnimeList", videos: malTrailers },
     ]);

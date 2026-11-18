@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { addonOnlyMetadata } from "@/lib/metadata-policy";
 import { resolveMalId } from "@/lib/mal-rating";
-import { animeCatalogRequest } from "@/lib/providers/anime-catalog-client";
+import { animeCatalogRequest, malPromoYoutubeId } from "@/lib/providers/anime-catalog-client";
 
 export type MalPromo = { id: string; name: string };
 
@@ -12,7 +12,6 @@ type PromoResponse = {
   } | null>;
 };
 
-const EMBED_ID = /\/embed\/([\w-]{11})/;
 const CACHE_MAX = 50;
 const NO_PROMOS: MalPromo[] = [];
 const cache = new Map<number, Promise<MalPromo[]>>();
@@ -21,9 +20,10 @@ const cache = new Map<number, Promise<MalPromo[]>>();
 export function malPromosFromResponse(data: PromoResponse | null | undefined): MalPromo[] {
   const promos: MalPromo[] = [];
   for (const item of data?.promo ?? []) {
-    // One malformed entry must not cost the usable ones.
-    const id = item?.trailer?.youtube_id || item?.trailer?.embed_url?.match(EMBED_ID)?.[1];
-    if (id) promos.push({ id, name: item?.title?.trim() ?? "" });
+    // One malformed entry must not cost the usable ones, nor a bad title its id.
+    const id = malPromoYoutubeId(item);
+    const title = (item as { title?: unknown } | null)?.title;
+    if (id) promos.push({ id, name: typeof title === "string" ? title.trim() : "" });
   }
   return promos;
 }

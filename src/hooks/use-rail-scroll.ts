@@ -109,6 +109,12 @@ export function useRailScroll() {
     node.addEventListener("pointermove", move);
     node.addEventListener("pointerup", up);
     node.addEventListener("pointercancel", up);
+    // A press that leaves before becoming a drag is over for the rail; a later press that
+    // re-enters with the button down must not inherit its origin.
+    const leave = () => {
+      if (drag && !drag.moved) drag = null;
+    };
+    node.addEventListener("pointerleave", leave);
     return () => {
       cancelAnimationFrame(frame.current);
       observer.disconnect();
@@ -119,6 +125,7 @@ export function useRailScroll() {
       node.removeEventListener("pointermove", move);
       node.removeEventListener("pointerup", up);
       node.removeEventListener("pointercancel", up);
+      node.removeEventListener("pointerleave", leave);
     };
   }, [node]);
 

@@ -276,7 +276,8 @@ export function GameDetailPage({
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [pricesOpen, setPricesOpen] = useState(false);
   const [trailerOpen, setTrailerOpen] = useState(false);
-  const trailerOpener = useRef<HTMLElement | null>(null);
+  const trailerOpener = useRef<HTMLElement | null>(null),
+    trailerFocusFrame = useRef<number | null>(null);
   useEffect(() => setTrailerOpen(false), [game.id]);
   // Views stay mounted while hidden; the theater is portaled, so it must not outlive the page.
   useEffect(() => {
@@ -393,18 +394,25 @@ export function GameDetailPage({
   const heroTrailers = heroTrailerSources({
     trailers: detail?.trailers ?? [],
     videos: atlas?.videos ?? [],
-    // A reviewed match is another game: only its own Steam link may supply the clip fallback.
-    steamId: reviewedMetadata ? steamLinkId : steamId,
+    // A reviewed match is another game: only its own Steam record (the atlas entry already
+    // matched to the reviewed IGDB game) may supply the clip fallback.
+    steamId: reviewedMetadata ? atlas?.steamId : steamId,
     youtube: "__TAURI_INTERNALS__" in window,
   });
   const trailerCount = heroTrailers.filter((source) => source.kind !== "clip").length;
   const openTrailer = (opener: HTMLElement) => {
+    // Reopened before the close's focus return ran: that would pull focus behind the theater.
+    if (trailerFocusFrame.current !== null) cancelAnimationFrame(trailerFocusFrame.current);
+    trailerFocusFrame.current = null;
     trailerOpener.current = opener;
     setTrailerOpen(true);
   };
   const closeTrailer = () => {
     setTrailerOpen(false);
-    requestAnimationFrame(() => trailerOpener.current?.focus({ preventScroll: true }));
+    trailerFocusFrame.current = requestAnimationFrame(() => {
+      trailerFocusFrame.current = null;
+      trailerOpener.current?.focus({ preventScroll: true });
+    });
   };
   const installed = library.scan?.games.find((item) => item.appId === steamId);
   const customCopies = matchingCustomGames(customLibrary.data.games, target);

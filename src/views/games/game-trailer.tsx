@@ -29,6 +29,20 @@ import {
 import "./game-detail-media.css";
 
 const VOLUME_KEY = "harbor.games.trailer-volume.v1";
+// The native window change in flight, entry or restore, shared by every trailer player: one
+// window, so a replacement player must not enter while the previous one is still restoring.
+// Borderless mode resizes the window asynchronously, and an overlapping change saves the
+// wrong bounds.
+const windowTransition: { current: Promise<void> | null } = { current: null };
+function trackWindowTransition(change: Promise<void>): Promise<void> {
+  windowTransition.current = change;
+  void change
+    .catch(() => {})
+    .finally(() => {
+      if (windowTransition.current === change) windowTransition.current = null;
+    });
+  return change;
+}
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 function initialVolume() {
   try {
@@ -361,32 +375,20 @@ export function GameTrailer({
   // Element fullscreen only fills the webview. The app's own window fullscreen (which honours
   // the user's fullscreen mode) runs with it, and is undone only if this player started it.
   const ownsWindowFullscreen = useRef(false),
-    // The window change in flight, entry or restore. Borderless mode resizes the window
-    // asynchronously, and a second change started meanwhile would save the wrong bounds.
-    windowTransition = useRef<Promise<void> | null>(null),
     unmounted = useRef(false);
-  const track = useCallback((change: Promise<void>) => {
-    windowTransition.current = change;
-    void change
-      .catch(() => {})
-      .finally(() => {
-        if (windowTransition.current === change) windowTransition.current = null;
-      });
-    return change;
-  }, []);
   // Restores the window this player took over, after any entry still in flight settles, so
   // the exit undoes what that entry applied.
   const releaseWindow = useCallback(() => {
     if (!ownsWindowFullscreen.current) return;
     ownsWindowFullscreen.current = false;
     const pending = windowTransition.current ?? Promise.resolve();
-    void track(
+    void trackWindowTransition(
       pending.then(
         () => exitWindowFullscreen(),
         () => exitWindowFullscreen(),
       ),
     );
-  }, [track]);
+  }, []);
   useEffect(() => {
     unmounted.current = false;
     const change = () => {
@@ -403,7 +405,7 @@ export function GameTrailer({
   }, [releaseWindow]);
   // `stillAudible` guards the deferred music pause: the trailer may have stopped or gone
   // quiet by the time the player module loads.
-  const claimSound = (stillAudible: () => boolean = () => true) => {
+  const claimSound = (stillAudible: () => boolean) => {
     for (const other of document.querySelectorAll<HTMLMediaElement>(
       ".games-view audio,.games-view video",
     ))
@@ -431,7 +433,7 @@ export function GameTrailer({
     volumeRef.current = next;
     setMuted(next === 0);
     onMutedChoice?.(next === 0);
-    if (next > 0) claimSound();
+    // Sound is claimed by the audible-playback effect, so a paused trailer never pauses music.
     try {
       localStorage.setItem(VOLUME_KEY, String(next));
     } catch {
@@ -456,10 +458,13 @@ export function GameTrailer({
   }, []);
   const toggleSound = () => {
     if (muted || volume === 0) {
-      if (volume === 0) setVolume(0.35);
-      claimSound();
-      setMuted(false);
-      onMutedChoice?.(false);
+      // From zero, restore an audible level through the slider's path so it is saved and a
+      // replacement player starts at it too.
+      if (volume === 0) changeVolume(0.35);
+      else {
+        setMuted(false);
+        onMutedChoice?.(false);
+      }
     } else {
       setMuted(true);
       onMutedChoice?.(true);
@@ -507,7 +512,7 @@ export function GameTrailer({
     const enter = async () => {
       if (native) {
         ownsWindowFullscreen.current = true;
-        await track(enterWindowFullscreen());
+        await trackWindowTransition(enterWindowFullscreen());
       }
       // Closed while the window was changing: the release already queued its restore.
       if (unmounted.current) return;
