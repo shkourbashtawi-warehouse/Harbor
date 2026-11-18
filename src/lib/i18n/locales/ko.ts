@@ -20,6 +20,7 @@ import gameLibraryTitles from "./ko/game-library-titles";
 import gameStoreSearch from "./ko/game-store-search";
 import gameSteamShortcuts from "./ko/game-steam-shortcuts";
 import gameGallery from "./ko/game-gallery";
+import gameTrailerTheater from "./ko/game-trailer-theater";
 import gameStardew from "./ko/game-stardew";
 import gameSourceAlerts from "./ko/game-source-alerts";
 import gameSims from "./ko/game-sims";
@@ -337,6 +338,7 @@ const ko: Record<string, string> = {
   ...gameHydraImport,
   ...gameSteamShortcuts,
   ...gameGallery,
+  ...gameTrailerTheater,
   ...gameAgeRatings,
   ...gameMetadataMatching,
   ...gameArtwork,

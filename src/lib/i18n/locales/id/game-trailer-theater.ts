@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "Trailer",
+  "games.player.watchTrailer": "Tonton trailer",
+  "games.player.closeTrailer": "Tutup trailer",
+  "games.player.settings": "Pengaturan trailer",
+  "games.player.quality": "Kualitas",
+  "games.player.qualityAuto": "Otomatis",
+  "games.player.speed": "Kecepatan pemutaran",
+  "games.player.speedNormal": "Normal",
+  "games.player.ambient": "Mode ambien",
+  "games.player.allTrailers": "Trailer",
+  "games.player.watchTrailers": "Tonton trailer · {count}",
+  "games.player.nextTrailer": "Trailer berikutnya (Shift+N)",
+  "games.player.loadingNamed": "Memuat {name}",
+  "games.player.nextSource": "Coba sumber berikutnya",
+  "games.player.clip": "Pratinjau singkat",
+  "games.player.noTrailer": "Tidak ada trailer yang bisa diputar untuk game ini.",
+  "games.player.allSources": "Semua",
+  "games.player.filterSources": "Saring trailer",
+  "games.player.slowSource":
+    "Butuh waktu lebih lama dari biasanya. Trailer YouTube bisa butuh sebentar pada kali pertama.",
+} satisfies Record<string, string>;

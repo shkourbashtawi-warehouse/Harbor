@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "Трейлер",
+  "games.player.watchTrailer": "Смотреть трейлер",
+  "games.player.closeTrailer": "Закрыть трейлер",
+  "games.player.settings": "Настройки трейлера",
+  "games.player.quality": "Качество",
+  "games.player.qualityAuto": "Авто",
+  "games.player.speed": "Скорость воспроизведения",
+  "games.player.speedNormal": "Обычная",
+  "games.player.ambient": "Фоновая подсветка",
+  "games.player.allTrailers": "Трейлеры",
+  "games.player.watchTrailers": "Смотреть трейлеры · {count}",
+  "games.player.nextTrailer": "Следующий трейлер (Shift+N)",
+  "games.player.loadingNamed": "Загрузка: {name}",
+  "games.player.nextSource": "Попробовать другой источник",
+  "games.player.clip": "Короткое превью",
+  "games.player.noTrailer": "Не удалось воспроизвести ни один трейлер этой игры.",
+  "games.player.allSources": "Все",
+  "games.player.filterSources": "Фильтр трейлеров",
+  "games.player.slowSource":
+    "Загрузка идёт дольше обычного. Трейлерам с YouTube в первый раз может понадобиться время.",
+} satisfies Record<string, string>;

@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "ट्रेलर",
+  "games.player.watchTrailer": "ट्रेलर देखें",
+  "games.player.closeTrailer": "ट्रेलर बंद करें",
+  "games.player.settings": "ट्रेलर सेटिंग्स",
+  "games.player.quality": "क्वालिटी",
+  "games.player.qualityAuto": "ऑटो",
+  "games.player.speed": "प्लेबैक स्पीड",
+  "games.player.speedNormal": "सामान्य",
+  "games.player.ambient": "एम्बिएंट मोड",
+  "games.player.allTrailers": "ट्रेलर",
+  "games.player.watchTrailers": "ट्रेलर देखें · {count}",
+  "games.player.nextTrailer": "अगला ट्रेलर (Shift+N)",
+  "games.player.loadingNamed": "{name} लोड हो रहा है",
+  "games.player.nextSource": "अगला सोर्स आज़माएँ",
+  "games.player.clip": "छोटा प्रीव्यू",
+  "games.player.noTrailer": "इस गेम का कोई ट्रेलर नहीं चल सका।",
+  "games.player.allSources": "सभी",
+  "games.player.filterSources": "ट्रेलर फ़िल्टर करें",
+  "games.player.slowSource":
+    "सामान्य से ज़्यादा समय लग रहा है। YouTube ट्रेलर पहली बार में थोड़ा समय ले सकते हैं।",
+} satisfies Record<string, string>;

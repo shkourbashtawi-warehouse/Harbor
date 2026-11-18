@@ -1,7 +1,30 @@
 import { Play } from "@/components/icons/play-filled";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Maximize, Minimize, Pause, RotateCcw, Volume1, Volume2, VolumeX } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import {
+  Maximize,
+  Minimize,
+  Pause,
+  RotateCcw,
+  SkipForward,
+  Volume1,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { useT } from "@/lib/i18n";
+import {
+  enterWindowFullscreen,
+  exitWindowFullscreen,
+  fullscreenMode,
+  getWindowFullscreen,
+} from "@/lib/fullscreen-state";
 import "./game-detail-media.css";
 
 const VOLUME_KEY = "harbor.games.trailer-volume.v1";
@@ -51,6 +74,17 @@ export function GameTrailer({
   intentional = false,
   suspended = false,
   live = false,
+  startMuted = true,
+  quality,
+  onQualities,
+  controls,
+  pinned = false,
+  title,
+  cinema = false,
+  rate = 1,
+  knownDuration,
+  onNext,
+  onVideo,
   onPlaybackChange,
 }: {
   url: string;
@@ -60,6 +94,25 @@ export function GameTrailer({
   onError?: () => void;
   intentional?: boolean;
   live?: boolean;
+  /** Opened by an explicit click, so sound may start; falls back to muted if blocked. */
+  startMuted?: boolean;
+  /** HLS rendition height; undefined keeps adaptive selection. */
+  quality?: number;
+  onQualities?: (heights: number[]) => void;
+  /** Extra buttons placed before the fullscreen control. */
+  controls?: ReactNode;
+  /** Rendered outside the page flow (the trailer theater), so page scroll must not stop it. */
+  pinned?: boolean;
+  /** Shown beside the time so viewers know which video is playing. */
+  title?: string;
+  /** Theater layout with YouTube-style controls, shortcuts and feedback. */
+  cinema?: boolean;
+  rate?: number;
+  /** Real length in seconds, for remuxed streams that only reveal it as they arrive. */
+  knownDuration?: number;
+  onNext?: () => void;
+  /** Hands the media element to a surface that mirrors it, such as an ambient glow. */
+  onVideo?: (element: HTMLVideoElement | null) => void;
   onPlaybackChange?: (playing: boolean) => void;
 }) {
   const t = useT(),
@@ -70,6 +123,18 @@ export function GameTrailer({
   errorHandler.current = onError;
   const playbackHandler = useRef(onPlaybackChange);
   playbackHandler.current = onPlaybackChange;
+  const qualitiesHandler = useRef(onQualities);
+  qualitiesHandler.current = onQualities;
+  const qualityRef = useRef(quality);
+  qualityRef.current = quality;
+  const pinnedRef = useRef(pinned);
+  const videoHandler = useRef(onVideo);
+  videoHandler.current = onVideo;
+  useEffect(() => {
+    videoHandler.current?.(video.current);
+    return () => videoHandler.current?.(null);
+  }, []);
+  pinnedRef.current = pinned;
   const [visible, setVisible] = useState(false),
     [pastTop, setPastTop] = useState(false),
     [manualPlay, setManualPlay] = useState(intentional),
@@ -82,7 +147,7 @@ export function GameTrailer({
   const [wantsPlay, setWantsPlay] = useState(
     () => intentional || !matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-  const [muted, setMuted] = useState(true),
+  const [muted, setMuted] = useState(startMuted),
     [volume, setVolume] = useState(initialVolume),
     [volumeOpen, setVolumeOpen] = useState(false),
     [time, setTime] = useState(0),
@@ -90,7 +155,9 @@ export function GameTrailer({
     [buffered, setBuffered] = useState(0),
     [ended, setEnded] = useState(false),
     [fullscreen, setFullscreen] = useState(false),
-    [chrome, setChrome] = useState(true);
+    [chrome, setChrome] = useState(true),
+    [bezel, setBezel] = useState<{ id: number; icon: ReactNode; label?: string } | null>(null),
+    [hover, setHover] = useState<{ at: number; time: number } | null>(null);
   useEffect(() => {
     playbackHandler.current?.(playing);
   }, [playing]);
@@ -103,9 +170,13 @@ export function GameTrailer({
       !fault,
     eligibleRef = useRef(eligible);
   eligibleRef.current = eligible;
-  const streaming = useRef<{ startLoad: (position?: number) => void; stopLoad: () => void } | null>(
-      null,
-    ),
+  const streaming = useRef<{
+      startLoad: (position?: number) => void;
+      stopLoad: () => void;
+      levels: { height: number }[];
+      currentLevel: number;
+      autoLevelEnabled: boolean;
+    } | null>(null),
     hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const volumeRef = useRef(volume);
   volumeRef.current = volume;
@@ -131,7 +202,7 @@ export function GameTrailer({
       wasPastTop = false;
     const update = () => {
       const away = (scroller?.scrollTop ?? document.scrollingElement?.scrollTop ?? 0) > 0;
-      if (wasPastTop && !away) setManualPlay(false);
+      if (wasPastTop && !away && !pinnedRef.current) setManualPlay(false);
       wasPastTop = away;
       setPastTop(away);
       const show = inView && !document.hidden;
@@ -199,6 +270,10 @@ export function GameTrailer({
           });
           player.on(Hls.Events.MANIFEST_PARSED, () => {
             if (!cancelled) {
+              const heights = player.levels.map((level) => level.height);
+              const preferred = heights.indexOf(qualityRef.current ?? -1);
+              if (preferred >= 0) player.currentLevel = preferred;
+              qualitiesHandler.current?.(heights);
               setReady(true);
               setBuffering(eligibleRef.current);
             }
@@ -224,23 +299,41 @@ export function GameTrailer({
     if (!el || !ready) return;
     if (eligible) {
       streaming.current?.startLoad(-1);
-      void el.play().then(
-        () => {
-          if (!eligibleRef.current) el.pause();
-        },
-        () => {
-          if (eligibleRef.current) {
-            setWantsPlay(false);
-            setBuffering(false);
-            setChrome(true);
-          }
-        },
-      );
+      const started = () => {
+        if (!eligibleRef.current) el.pause();
+      };
+      const blocked = () => {
+        if (eligibleRef.current) {
+          setWantsPlay(false);
+          setBuffering(false);
+          setChrome(true);
+        }
+      };
+      void el.play().then(started, () => {
+        if (!eligibleRef.current || el.muted) return blocked();
+        // Sound can be refused without a recent gesture; muted playback is still allowed.
+        el.muted = true;
+        setMuted(true);
+        void el.play().then(started, blocked);
+      });
     } else {
       el.pause();
       streaming.current?.stopLoad();
     }
   }, [eligible, ready]);
+  useEffect(() => {
+    const player = streaming.current;
+    if (!player || !ready) return;
+    // currentLevel reports the playing rendition even in auto mode, so compare intent instead;
+    // setting it needlessly flushes the buffer of players that never pick a quality.
+    if (quality === undefined) {
+      if (!player.autoLevelEnabled) player.currentLevel = -1;
+      return;
+    }
+    const level = player.levels.findIndex((l) => l.height === quality);
+    if (level >= 0 && (player.autoLevelEnabled || player.currentLevel !== level))
+      player.currentLevel = level;
+  }, [quality, ready]);
   useEffect(() => {
     const el = video.current;
     if (el) {
@@ -249,9 +342,31 @@ export function GameTrailer({
     }
   }, [muted, volume, ready]);
   useEffect(() => {
-    const change = () => setFullscreen(document.fullscreenElement === root.current);
+    const el = video.current;
+    if (!el) return;
+    el.defaultPlaybackRate = rate;
+    el.playbackRate = rate;
+  }, [rate, ready]);
+  // Element fullscreen only fills the webview. The app's own window fullscreen (which honours
+  // the user's fullscreen mode) runs with it, and is undone only if this player started it.
+  const ownsWindowFullscreen = useRef(false);
+  useEffect(() => {
+    const change = () => {
+      const mine = document.fullscreenElement === root.current;
+      setFullscreen(mine);
+      if (!mine && ownsWindowFullscreen.current) {
+        ownsWindowFullscreen.current = false;
+        void exitWindowFullscreen();
+      }
+    };
     document.addEventListener("fullscreenchange", change);
-    return () => document.removeEventListener("fullscreenchange", change);
+    return () => {
+      document.removeEventListener("fullscreenchange", change);
+      if (ownsWindowFullscreen.current) {
+        ownsWindowFullscreen.current = false;
+        void exitWindowFullscreen();
+      }
+    };
   }, []);
   const claimSound = () => {
     for (const other of document.querySelectorAll<HTMLMediaElement>(
@@ -264,6 +379,11 @@ export function GameTrailer({
       })
       .catch(() => {});
   };
+  const claimSoundRef = useRef(claimSound);
+  claimSoundRef.current = claimSound;
+  useEffect(() => {
+    if (playing && !muted) claimSoundRef.current();
+  }, [playing, muted]);
   const changeVolume = (value: number) => {
     const next = clamp(value);
     setVolume(next);
@@ -316,21 +436,101 @@ export function GameTrailer({
   const seek = (value: number) => {
     const el = video.current;
     if (!el || !Number.isFinite(duration) || duration <= 0) return;
-    el.currentTime = Math.max(0, Math.min(duration, value));
+    // A remuxed stream cannot jump past what has arrived, even when its full length is known.
+    const reachable = el.seekable.length ? el.seekable.end(el.seekable.length - 1) : duration;
+    el.currentTime = Math.max(0, Math.min(duration, reachable, value));
     setTime(el.currentTime);
     setEnded(false);
     reveal();
   };
   const toggleFullscreen = () => {
-    if (document.fullscreenElement === root.current) void document.exitFullscreen().catch(() => {});
-    else void root.current?.requestFullscreen().catch(() => {});
     reveal();
+    if (document.fullscreenElement === root.current) {
+      void document.exitFullscreen().catch(() => {});
+      return;
+    }
+    const node = root.current;
+    if (!node) return;
+    // The window goes fullscreen first; requesting the element first leaves the window at its
+    // maximized size, so the video shows bars and the taskbar gap. Browsers only need the element.
+    // In "maximized" mode the app's fullscreen only maximizes the window, and undoing it would
+    // restore a window the user had maximized themselves; the element fills it already.
+    const native =
+      "__TAURI_INTERNALS__" in window && !getWindowFullscreen() && fullscreenMode() !== "maximized";
+    const enter = async () => {
+      if (native) {
+        ownsWindowFullscreen.current = true;
+        await enterWindowFullscreen();
+      }
+      await node.requestFullscreen();
+    };
+    void enter().catch(() => {
+      if (!ownsWindowFullscreen.current) return;
+      ownsWindowFullscreen.current = false;
+      void exitWindowFullscreen();
+    });
+  };
+  const flash = (icon: ReactNode, label?: string) => {
+    // Reduced motion disables the animation that would remove the bezel.
+    if (cinema && !matchMedia("(prefers-reduced-motion: reduce)").matches)
+      setBezel({ id: Date.now(), icon, label });
+  };
+  const seekBy = (delta: number) => {
+    const el = video.current;
+    if (!el) return;
+    seek(el.currentTime + delta);
+    flash(
+      <RotateCcw size={22} style={delta > 0 ? { transform: "scaleX(-1)" } : undefined} />,
+      `${delta > 0 ? "+" : "−"}${Math.abs(delta)}s`,
+    );
+  };
+  const nudgeVolume = (delta: number) => {
+    const next = clamp((muted ? 0 : volume) + delta);
+    changeVolume(next);
+    reveal();
+    flash(next === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />, `${Math.round(next * 100)}%`);
+  };
+  const clickPlayback = () => {
+    const el = video.current;
+    if (el && !fault)
+      flash(el.paused ? <Play size={26} /> : <Pause size={26} fill="currentColor" />);
+    togglePlayback();
+  };
+  // YouTube's keys. Arrows are left to TV navigation unless the video surface has focus.
+  const cinemaKey = (event: ReactKeyboardEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.matches("input") || event.ctrlKey || event.metaKey || event.altKey) return false;
+    const key = event.key.toLowerCase(),
+      surface = target === video.current;
+    if ((key === " " && !target.matches("button")) || key === "k") clickPlayback();
+    else if (key === "j") seekBy(-10);
+    else if (key === "l") seekBy(10);
+    else if (key === "m") {
+      toggleSound();
+      flash(muted || !volume ? <Volume2 size={24} /> : <VolumeX size={24} />);
+    } else if (key === "f") toggleFullscreen();
+    else if (key === "n" && event.shiftKey && onNext) onNext();
+    else if (/^[0-9]$/.test(key) && duration) seek((duration * Number(key)) / 10);
+    else if (surface && key === "arrowleft") seekBy(-5);
+    else if (surface && key === "arrowright") seekBy(5);
+    else if (surface && key === "arrowup") nudgeVolume(0.05);
+    else if (surface && key === "arrowdown") nudgeVolume(-0.05);
+    else return false;
+    return true;
+  };
+  const hoverSeek = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!cinema || !duration) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    let at = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+    if (getComputedStyle(event.currentTarget).direction === "rtl") at = 1 - at;
+    setHover({ at, time: at * duration });
   };
   const updateProgress = () => {
     const el = video.current;
     if (!el) return;
     setTime(el.currentTime);
-    const total = Number.isFinite(el.duration) ? el.duration : 0;
+    const reported = Number.isFinite(el.duration) ? el.duration : 0;
+    const total = Math.max(reported, knownDuration ?? 0);
     setDuration(total);
     if (el.buffered.length && total)
       setBuffered((el.buffered.end(el.buffered.length - 1) / total) * 100);
@@ -339,7 +539,7 @@ export function GameTrailer({
   return (
     <div
       ref={root}
-      className={`games-media-player${shown ? " is-chrome-visible" : ""}${playing ? " is-playing" : ""}${fault ? " has-error" : ""}`}
+      className={`games-media-player${cinema ? " is-cinema" : ""}${shown ? " is-chrome-visible" : ""}${playing ? " is-playing" : ""}${fault ? " has-error" : ""}`}
       onPointerMove={reveal}
       onPointerLeave={() => {
         setVolumeOpen(false);
@@ -347,6 +547,13 @@ export function GameTrailer({
       }}
       onFocusCapture={reveal}
       onKeyDown={(event) => {
+        if (cinema) {
+          if (cinemaKey(event)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
         if ((event.target as HTMLElement).matches("input,button")) return;
         if (event.key === " " || event.key.toLowerCase() === "k") {
           event.preventDefault();
@@ -362,7 +569,10 @@ export function GameTrailer({
         preload="metadata"
         poster={poster}
         aria-label={t(live ? "games.details.broadcast" : "games.trailer")}
-        onClick={togglePlayback}
+        tabIndex={cinema ? -1 : undefined}
+        data-local-keyboard={cinema ? "" : undefined}
+        onClick={cinema ? clickPlayback : togglePlayback}
+        onDoubleClick={cinema ? toggleFullscreen : undefined}
         onLoadedMetadata={() => {
           setReady(true);
           updateProgress();
@@ -393,6 +603,17 @@ export function GameTrailer({
           }
         }}
       />
+      {bezel && (
+        <div
+          key={bezel.id}
+          className="games-player-bezel"
+          aria-hidden="true"
+          onAnimationEnd={() => setBezel(null)}
+        >
+          {bezel.icon}
+          {bezel.label && <span>{bezel.label}</span>}
+        </div>
+      )}
       {muted && playing && !fault && (
         <button
           type="button"
@@ -455,6 +676,8 @@ export function GameTrailer({
         {!live && (
           <div
             className="games-player-seek"
+            onPointerMove={hoverSeek}
+            onPointerLeave={() => setHover(null)}
             style={
               {
                 "--played": `${duration ? (time / duration) * 100 : 0}%`,
@@ -463,6 +686,14 @@ export function GameTrailer({
             }
           >
             <span />
+            {hover && (
+              <b
+                className="games-player-seek-hover"
+                style={{ insetInlineStart: `${hover.at * 100}%` }}
+              >
+                {timeLabel(hover.time)}
+              </b>
+            )}
             <input
               aria-label={t("games.player.seek")}
               aria-valuetext={`${timeLabel(time)} / ${timeLabel(duration)}`}
@@ -500,12 +731,26 @@ export function GameTrailer({
               <Play size={19} />
             )}
           </Control>
+          {onNext && (
+            <Control
+              className="games-player-next"
+              label={t("games.player.nextTrailer")}
+              onClick={onNext}
+            >
+              <SkipForward size={19} fill="currentColor" />
+            </Control>
+          )}
           {live ? (
             <span className="games-player-time">{t("games.details.broadcast")}</span>
           ) : (
             <span className="games-player-time" dir="ltr">
               {timeLabel(time)}
               <span> / {timeLabel(duration)}</span>
+            </span>
+          )}
+          {title && (
+            <span className="games-player-title" title={title}>
+              {title}
             </span>
           )}
           <div
@@ -552,6 +797,7 @@ export function GameTrailer({
               <small>{t("games.player.wheel")}</small>
             </div>
           </div>
+          {controls}
           <Control
             label={t(fullscreen ? "games.player.exitFullscreen" : "games.player.fullscreen")}
             onClick={toggleFullscreen}

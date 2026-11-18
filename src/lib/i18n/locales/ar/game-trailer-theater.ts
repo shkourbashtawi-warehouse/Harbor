@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "المقطع الدعائي",
+  "games.player.watchTrailer": "شاهد المقطع الدعائي",
+  "games.player.closeTrailer": "إغلاق المقطع الدعائي",
+  "games.player.settings": "إعدادات المقطع الدعائي",
+  "games.player.quality": "الجودة",
+  "games.player.qualityAuto": "تلقائي",
+  "games.player.speed": "سرعة التشغيل",
+  "games.player.speedNormal": "عادية",
+  "games.player.ambient": "الوضع المحيطي",
+  "games.player.allTrailers": "المقاطع الدعائية",
+  "games.player.watchTrailers": "شاهد المقاطع الدعائية · {count}",
+  "games.player.nextTrailer": "المقطع الدعائي التالي (Shift+N)",
+  "games.player.loadingNamed": "جارٍ تحميل {name}",
+  "games.player.nextSource": "جرّب المصدر التالي",
+  "games.player.clip": "معاينة قصيرة",
+  "games.player.noTrailer": "تعذّر تشغيل أي مقطع دعائي لهذه اللعبة.",
+  "games.player.allSources": "الكل",
+  "games.player.filterSources": "تصفية المقاطع الدعائية",
+  "games.player.slowSource":
+    "يستغرق وقتاً أطول من المعتاد. قد تحتاج مقاطع يوتيوب الدعائية لحظة في المرة الأولى.",
+} satisfies Record<string, string>;

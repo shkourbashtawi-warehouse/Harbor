@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "Đoạn giới thiệu",
+  "games.player.watchTrailer": "Xem đoạn giới thiệu",
+  "games.player.closeTrailer": "Đóng đoạn giới thiệu",
+  "games.player.settings": "Cài đặt đoạn giới thiệu",
+  "games.player.quality": "Chất lượng",
+  "games.player.qualityAuto": "Tự động",
+  "games.player.speed": "Tốc độ phát",
+  "games.player.speedNormal": "Bình thường",
+  "games.player.ambient": "Chế độ ánh sáng môi trường",
+  "games.player.allTrailers": "Đoạn giới thiệu",
+  "games.player.watchTrailers": "Xem đoạn giới thiệu · {count}",
+  "games.player.nextTrailer": "Đoạn giới thiệu tiếp theo (Shift+N)",
+  "games.player.loadingNamed": "Đang tải {name}",
+  "games.player.nextSource": "Thử nguồn tiếp theo",
+  "games.player.clip": "Xem trước ngắn",
+  "games.player.noTrailer": "Không phát được đoạn giới thiệu nào của trò chơi này.",
+  "games.player.allSources": "Tất cả",
+  "games.player.filterSources": "Lọc đoạn giới thiệu",
+  "games.player.slowSource":
+    "Mất nhiều thời gian hơn bình thường. Đoạn giới thiệu YouTube có thể cần chút thời gian ở lần đầu.",
+} satisfies Record<string, string>;

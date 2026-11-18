@@ -114,6 +114,8 @@ export type TmdbDetail = {
   trailerYtId: string | null;
   trailerCandidates: string[];
   trailerVideos?: ExtraVideo[];
+  /** Catalog the trailer list came from, shown beside each trailer. */
+  trailerSource?: string;
   extraVideos: ExtraVideo[];
   gallery: GalleryImages;
   cast: CastEntry[];
@@ -589,6 +591,7 @@ export async function tmdbDetails(
     trailerYtId,
     trailerCandidates,
     trailerVideos,
+    trailerSource: "TMDB",
     extraVideos,
     gallery,
     cast,

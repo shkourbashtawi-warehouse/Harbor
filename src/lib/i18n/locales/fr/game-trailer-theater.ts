@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "Bande-annonce",
+  "games.player.watchTrailer": "Voir la bande-annonce",
+  "games.player.closeTrailer": "Fermer la bande-annonce",
+  "games.player.settings": "Paramètres de la bande-annonce",
+  "games.player.quality": "Qualité",
+  "games.player.qualityAuto": "Auto",
+  "games.player.speed": "Vitesse de lecture",
+  "games.player.speedNormal": "Normale",
+  "games.player.ambient": "Mode ambiant",
+  "games.player.allTrailers": "Bandes-annonces",
+  "games.player.watchTrailers": "Voir les bandes-annonces · {count}",
+  "games.player.nextTrailer": "Bande-annonce suivante (Maj+N)",
+  "games.player.loadingNamed": "Chargement de {name}",
+  "games.player.nextSource": "Essayer la source suivante",
+  "games.player.clip": "Aperçu court",
+  "games.player.noTrailer": "Aucune bande-annonce n'a pu être lue pour ce jeu.",
+  "games.player.allSources": "Toutes",
+  "games.player.filterSources": "Filtrer les bandes-annonces",
+  "games.player.slowSource":
+    "Cela prend plus de temps que d’habitude. Les bandes-annonces YouTube peuvent mettre un moment la première fois.",
+} satisfies Record<string, string>;

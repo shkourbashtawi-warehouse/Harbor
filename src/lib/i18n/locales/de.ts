@@ -20,6 +20,7 @@ import gameLibraryTitles from "./de/game-library-titles";
 import gameStoreSearch from "./de/game-store-search";
 import gameSteamShortcuts from "./de/game-steam-shortcuts";
 import gameGallery from "./de/game-gallery";
+import gameTrailerTheater from "./de/game-trailer-theater";
 import gameStardew from "./de/game-stardew";
 import gamePokemon from "./de/game-pokemon";
 import gameSourceAlerts from "./de/game-source-alerts";
@@ -383,6 +384,7 @@ const de: Record<string, string> = {
   ...gameHydraImport,
   ...gameSteamShortcuts,
   ...gameGallery,
+  ...gameTrailerTheater,
   ...gameAgeRatings,
   ...gameMetadataMatching,
   ...gameArtwork,

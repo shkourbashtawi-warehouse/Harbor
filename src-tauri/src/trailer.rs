@@ -481,6 +481,10 @@ pub struct YoutubeStream {
     audio_url: Option<String>,
     headers: std::collections::BTreeMap<String, String>,
     transcode: bool,
+    /// Seconds, from the video's metadata. A remuxed stream only reveals its
+    /// length as it arrives, so players need this to show the real total.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    duration: Option<f64>,
 }
 
 fn requested_height(quality: Option<&str>) -> Option<u64> {
@@ -490,6 +494,18 @@ fn requested_height(quality: Option<&str>) -> Option<u64> {
         Some("1080p") => Some(1080),
         _ => None,
     }
+}
+
+/// A rendition's quality in YouTube's terms: the shorter side of the frame. A vertical
+/// 1080x1920 Short is "1080p"; judging it by height would cap it at 608x1080 and, with no
+/// tall enough avc1 variant, reject the video outright.
+fn rendition(format: &serde_json::Value) -> Option<u64> {
+    let height = format["height"].as_u64()?;
+    Some(
+        format["width"]
+            .as_u64()
+            .map_or(height, |width| width.min(height)),
+    )
 }
 
 fn format_has_audio(format: &serde_json::Value) -> bool {
@@ -510,11 +526,10 @@ fn select_hls_video<'a>(
                     .as_str()
                     .is_some_and(|codec| codec.starts_with("avc1"))
                 && format["url"].as_str().is_some()
-                && format["height"].as_u64().is_some_and(|height| {
-                    max_height.map_or(true, |cap| height <= cap)
-                })
+                && rendition(format)
+                    .is_some_and(|height| max_height.map_or(true, |cap| height <= cap))
         })
-        .max_by_key(|format| format["height"].as_u64().unwrap_or(0))
+        .max_by_key(|format| rendition(format).unwrap_or(0))
 }
 
 fn select_hls_audio(formats: &[serde_json::Value]) -> Option<String> {
@@ -547,7 +562,7 @@ fn highest_video_height(formats: &[serde_json::Value]) -> u64 {
                     .as_str()
                     .is_some_and(|codec| !codec.is_empty() && codec != "none")
         })
-        .filter_map(|format| format["height"].as_u64())
+        .filter_map(rendition)
         .max()
         .unwrap_or(0)
 }
@@ -569,11 +584,10 @@ fn select_muxed<'a>(
                 && format["acodec"]
                     .as_str()
                     .is_some_and(|codec| !codec.is_empty() && codec != "none")
-                && format["height"].as_u64().is_some_and(|height| {
-                    max_height.map_or(true, |cap| height <= cap)
-                })
+                && rendition(format)
+                    .is_some_and(|height| max_height.map_or(true, |cap| height <= cap))
         })
-        .max_by_key(|format| format["height"].as_u64().unwrap_or(0))
+        .max_by_key(|format| rendition(format).unwrap_or(0))
 }
 
 fn stream_from_format(
@@ -597,6 +611,7 @@ fn stream_from_format(
         audio_url,
         headers,
         transcode,
+        duration: None,
     })
 }
 
@@ -621,6 +636,10 @@ pub async fn resolve_youtube_stream(
     let metadata: serde_json::Value = serde_json::from_slice(&output.stdout)
         .map_err(|_| "YouTube did not return stream metadata".to_string())?;
     let formats = metadata.get("formats").and_then(serde_json::Value::as_array);
+    let duration = metadata
+        .get("duration")
+        .and_then(serde_json::Value::as_f64)
+        .filter(|seconds| seconds.is_finite() && *seconds > 0.0);
 
     // Addon YouTube sources call this without a quality preference. Keep the
     // master manifest there: those callers do not pass a separate audio URL
@@ -635,17 +654,17 @@ pub async fn resolve_youtube_stream(
                     .ok_or_else(|| "YouTube did not return an HLS master manifest".to_string())?;
                 let stream = stream_from_format(&payload, None, true)?;
                 verify_youtube_stream(&stream).await?;
-                return Ok(stream);
+                return Ok(YoutubeStream { duration, ..stream });
             }
             if let Some(muxed) = select_muxed(formats, None) {
                 let stream = stream_from_format(muxed, None, false)?;
                 verify_youtube_stream(&stream).await?;
-                return Ok(stream);
+                return Ok(YoutubeStream { duration, ..stream });
             }
         }
         let stream = parse_youtube_stream(&output.stdout)?;
         verify_youtube_stream(&stream).await?;
-        return Ok(stream);
+        return Ok(YoutubeStream { duration, ..stream });
     }
 
     // Trailer playback always passes a quality. Play the selected HLS variant
@@ -656,7 +675,7 @@ pub async fn resolve_youtube_stream(
         let available_height = highest_video_height(formats);
         let target_height = max_height.map_or(available_height, |cap| cap.min(available_height));
         if let Some(hls) = select_hls_video(formats, max_height) {
-            let selected_height = hls["height"].as_u64().unwrap_or(0);
+            let selected_height = rendition(hls).unwrap_or(0);
             if selected_height >= target_height {
                 let audio_url = if format_has_audio(hls) {
                     None
@@ -667,18 +686,18 @@ pub async fn resolve_youtube_stream(
                 };
                 let stream = stream_from_format(hls, audio_url, true)?;
                 verify_youtube_stream(&stream).await?;
-                return Ok(stream);
+                return Ok(YoutubeStream { duration, ..stream });
             }
         }
 
         // Progressive streams are a single muxed URL, so they need no proxy
         // muxing. Only use one when it meets the requested quality.
         if let Some(muxed) = select_muxed(formats, max_height) {
-            let selected_height = muxed["height"].as_u64().unwrap_or(0);
+            let selected_height = rendition(muxed).unwrap_or(0);
             if selected_height >= target_height {
                 let stream = stream_from_format(muxed, None, false)?;
                 verify_youtube_stream(&stream).await?;
-                return Ok(stream);
+                return Ok(YoutubeStream { duration, ..stream });
             }
         }
     }

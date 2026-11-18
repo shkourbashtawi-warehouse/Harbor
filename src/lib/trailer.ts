@@ -78,6 +78,7 @@ export function fetchTrailer(
       audio_url?: string | null;
       headers: Record<string, string>;
       transcode?: boolean;
+      duration?: number;
     }>("resolve_youtube_stream", { videoId, quality })
       .then(async (stream): Promise<TrailerInfo> => {
         const expiry = [stream.url, stream.audio_url]
@@ -103,7 +104,7 @@ export function fetchTrailer(
           file_path: "",
           stream_url: proxy.url,
           quality,
-          duration_seconds: 0,
+          duration_seconds: stream.duration ?? 0,
           title: "",
           size_bytes: 0,
         };
@@ -197,6 +198,14 @@ export function prefetchTrailerDownload(
   if (!isTauri || !videoId) return;
   if (!shouldPrefetch()) return;
   void fetchTrailer(videoId, quality, true);
+}
+
+/** Drops a resolved trailer so the next request resolves it afresh (for example after the
+ *  stream it pointed at stopped working). */
+export function forgetTrailer(videoId: string, quality: Quality): void {
+  const key = cacheKey(videoId, quality);
+  streamCache.delete(key);
+  cache.delete(key);
 }
 
 export function trailerSrc(info: TrailerInfo): string {

@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "Fragman",
+  "games.player.watchTrailer": "Fragmanı izle",
+  "games.player.closeTrailer": "Fragmanı kapat",
+  "games.player.settings": "Fragman ayarları",
+  "games.player.quality": "Kalite",
+  "games.player.qualityAuto": "Otomatik",
+  "games.player.speed": "Oynatma hızı",
+  "games.player.speedNormal": "Normal",
+  "games.player.ambient": "Ortam modu",
+  "games.player.allTrailers": "Fragmanlar",
+  "games.player.watchTrailers": "Fragmanları izle · {count}",
+  "games.player.nextTrailer": "Sonraki fragman (Shift+N)",
+  "games.player.loadingNamed": "{name} yükleniyor",
+  "games.player.nextSource": "Sonraki kaynağı dene",
+  "games.player.clip": "Kısa önizleme",
+  "games.player.noTrailer": "Bu oyun için hiçbir fragman oynatılamadı.",
+  "games.player.allSources": "Tümü",
+  "games.player.filterSources": "Fragmanları filtrele",
+  "games.player.slowSource":
+    "Normalden uzun sürüyor. YouTube fragmanları ilk seferde biraz zaman alabilir.",
+} satisfies Record<string, string>;

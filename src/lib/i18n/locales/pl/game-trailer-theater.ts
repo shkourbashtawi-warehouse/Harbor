@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "Zwiastun",
+  "games.player.watchTrailer": "Obejrzyj zwiastun",
+  "games.player.closeTrailer": "Zamknij zwiastun",
+  "games.player.settings": "Ustawienia zwiastuna",
+  "games.player.quality": "Jakość",
+  "games.player.qualityAuto": "Automatyczna",
+  "games.player.speed": "Prędkość odtwarzania",
+  "games.player.speedNormal": "Normalna",
+  "games.player.ambient": "Tryb ambient",
+  "games.player.allTrailers": "Zwiastuny",
+  "games.player.watchTrailers": "Obejrzyj zwiastuny · {count}",
+  "games.player.nextTrailer": "Następny zwiastun (Shift+N)",
+  "games.player.loadingNamed": "Wczytywanie: {name}",
+  "games.player.nextSource": "Spróbuj następnego źródła",
+  "games.player.clip": "Krótki podgląd",
+  "games.player.noTrailer": "Nie udało się odtworzyć żadnego zwiastuna tej gry.",
+  "games.player.allSources": "Wszystkie",
+  "games.player.filterSources": "Filtruj zwiastuny",
+  "games.player.slowSource":
+    "Trwa to dłużej niż zwykle. Zwiastuny z YouTube za pierwszym razem mogą potrzebować chwili.",
+} satisfies Record<string, string>;

@@ -1,0 +1,791 @@
+/* Trailer theater: a dark viewing layer over the game page. Blur lives only on this fixed layer. */
+.games-theater-backdrop {
+  --theater-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  background: #050506d9;
+  backdrop-filter: blur(22px) saturate(120%);
+  padding: clamp(16px, 3vw, 40px);
+  overflow-y: auto;
+  /* The ambient light spills past the frame; clipping keeps it from widening the layer,
+     which would add a sideways scrollbar and shift the centred dialog. */
+  overflow-x: clip;
+  overscroll-behavior: contain;
+  /* A content-sized column would grow to fit every trailer card side by side and push the
+     dialog off centre; the column is the viewport, and the card rail scrolls inside it. */
+  grid-template-columns: minmax(0, 1fr);
+}
+/* ModalShell's surface card is replaced by the theater's own frame. */
+.games-theater-backdrop > [role="dialog"] {
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+.games-theater {
+  position: relative;
+  /* Height leads: the frame shrinks to keep 16:9 and the queue on screen. */
+  width: min(100%, max(480px, calc((100dvh - 290px) * 16 / 9 + 12px)), 1320px);
+  margin-inline: auto;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #f4f5f5;
+}
+/* YouTube-like ambient light: the game's art, heavily blurred behind the frame. */
+.games-theater-ambient {
+  position: absolute;
+  inset: 8% 4% 18%;
+  z-index: -1;
+  background-position: center;
+  background-size: cover;
+  filter: blur(80px) saturate(140%);
+  opacity: 0.32;
+  transform: scale(1.1);
+  pointer-events: none;
+  animation: games-theater-glow 1.2s var(--theater-ease) both;
+}
+.games-theater-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  animation: games-theater-rise 0.7s var(--theater-ease) both;
+}
+.games-theater-heading {
+  min-width: 0;
+}
+.games-theater-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffffff0f;
+  box-shadow: inset 0 0 0 1px #ffffff1a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #d9dcdd;
+}
+.games-theater-heading h2 {
+  margin: 10px 0 0;
+  font-size: clamp(22px, 2.4vw, 32px);
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.games-theater-heading p {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #a7abad;
+}
+.games-theater-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 8px 0 4px;
+  border-radius: 999px;
+  background: #ffffff0f;
+  box-shadow: inset 0 0 0 1px #ffffff1a;
+  color: #f4f5f5;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background 0.4s var(--theater-ease),
+    transform 0.4s var(--theater-ease);
+}
+.games-theater-close-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff14;
+  transition: transform 0.5s var(--theater-ease);
+}
+.games-theater-close kbd {
+  font: inherit;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #ffffff14;
+  color: #b9bdbf;
+}
+.games-theater-close:hover {
+  background: #ffffff1c;
+}
+.games-theater-close:hover .games-theater-close-icon {
+  transform: rotate(90deg);
+}
+.games-theater-close:active {
+  transform: scale(0.98);
+}
+.games-theater-close:focus-visible,
+.games-theater-card:focus-visible,
+.games-theater-pill:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+/* Double bezel: a hairline tray holding the player core. */
+.games-theater-shell {
+  padding: 6px;
+  border-radius: 22px;
+  background: #ffffff08;
+  box-shadow:
+    inset 0 0 0 1px #ffffff14,
+    0 40px 120px -40px #000000e6;
+  animation: games-theater-lift 0.8s var(--theater-ease) both;
+}
+.games-theater-core {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #000;
+  box-shadow: inset 0 1px 1px #ffffff1f;
+}
+.games-theater-core > .games-media-player {
+  background: #000;
+}
+.games-theater-core > .games-media-player > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.games-theater-core > .games-media-player:fullscreen {
+  border-radius: 0;
+}
+.games-theater-core .games-player-controls {
+  padding: 40px 18px 12px;
+}
+.games-theater-wait {
+  position: absolute;
+  inset: 0;
+}
+.games-theater-wait > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.35;
+  filter: blur(2px);
+  transform: scale(1.02);
+}
+.games-theater-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+}
+.games-theater-status .games-player-buffering {
+  position: static;
+}
+.games-theater-status p {
+  margin: 0;
+  font-size: 14px;
+  color: #e3e5e6;
+}
+.games-theater-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #ffffff14;
+  box-shadow: inset 0 0 0 1px #ffffff1f;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  transition:
+    background 0.4s var(--theater-ease),
+    transform 0.4s var(--theater-ease);
+}
+.games-theater-pill:hover {
+  background: #ffffff24;
+}
+.games-theater-pill:active {
+  transform: scale(0.98);
+}
+.games-theater-queue h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e3e5e6;
+}
+.games-theater-queue h3 > span {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #ffffff12;
+  font-size: 11px;
+  font-weight: 500;
+  color: #a7abad;
+}
+.games-theater-cards {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(180px, 220px);
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 4px 10px;
+  margin: -4px;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  --fade-start: 0px;
+  --fade-end: 0px;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)),
+    transparent 100%
+  );
+}
+.games-theater-rail:hover .games-theater-cards {
+  scrollbar-color: #ffffff38 transparent;
+}
+.games-theater-rail.has-start .games-theater-cards {
+  --fade-start: 56px;
+}
+.games-theater-rail.has-end .games-theater-cards {
+  --fade-end: 56px;
+}
+[dir="rtl"] .games-theater-cards {
+  mask-image: linear-gradient(
+    to left,
+    transparent 0,
+    #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)),
+    transparent 100%
+  );
+}
+.games-theater-cards[data-dragging] {
+  cursor: grabbing;
+  user-select: none;
+}
+.games-theater-cards[data-dragging] .games-theater-card {
+  pointer-events: none;
+}
+.games-theater-rail {
+  position: relative;
+}
+.games-theater-rail-arrow {
+  position: absolute;
+  top: 70px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-top: -19px;
+  border-radius: 50%;
+  color: #fff;
+  background: #1c1e1fd9;
+  box-shadow:
+    inset 0 0 0 1px #ffffff1f,
+    0 8px 24px -8px #000c;
+  transition:
+    background 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.games-theater-rail-arrow[hidden] {
+  display: none;
+}
+.games-theater-rail-arrow.is-start {
+  inset-inline-start: -10px;
+}
+.games-theater-rail-arrow.is-end {
+  inset-inline-end: -10px;
+}
+.games-theater-rail-arrow:hover {
+  background: #2c3031f0;
+  transform: scale(1.06);
+}
+.games-theater-rail-arrow:active {
+  transform: scale(0.96);
+}
+[dir="rtl"] .games-theater-rail-arrow > svg {
+  scale: -1 1;
+}
+.games-theater-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 14px;
+  text-align: start;
+  color: inherit;
+  scroll-snap-align: start;
+  transition:
+    background 0.5s var(--theater-ease),
+    transform 0.5s var(--theater-ease);
+  animation: games-theater-rise 0.7s var(--theater-ease) both;
+}
+.games-theater-card:hover {
+  background: #ffffff0d;
+}
+.games-theater-card:active {
+  transform: scale(0.98);
+}
+.games-theater-card[aria-current="true"] {
+  background: #ffffff12;
+  box-shadow: inset 0 0 0 1px #ffffff26;
+}
+.games-theater-card.is-failed {
+  opacity: 0.45;
+}
+.games-theater-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #ffffff0a;
+}
+.games-theater-thumb > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s var(--theater-ease);
+}
+.games-theater-card:hover .games-theater-thumb > img {
+  transform: scale(1.04);
+}
+.games-theater-now {
+  position: absolute;
+  inset: auto auto 8px 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  padding: 4px 6px;
+  box-sizing: content-box;
+  border-radius: 6px;
+  background: #000000b3;
+}
+.games-theater-now i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: #f00;
+  transform-origin: bottom;
+  animation: games-theater-eq 0.9s var(--theater-ease) infinite alternate;
+}
+.games-theater-now i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.games-theater-now i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.games-theater-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 4px 2px;
+  min-width: 0;
+}
+.games-theater-card-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 550;
+}
+.games-theater-card-text small {
+  font-size: 11px;
+  color: #8f9496;
+}
+.games-theater-backdrop.is-closing .games-theater {
+  animation: games-theater-out 0.19s var(--theater-ease) both;
+}
+@keyframes games-theater-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes games-theater-lift {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+}
+@keyframes games-theater-glow {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes games-theater-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes games-theater-eq {
+  from {
+    transform: scaleY(0.3);
+  }
+}
+@media (max-width: 700px) {
+  .games-theater-close kbd,
+  .games-theater-heading p,
+  .games-theater-core .games-player-title {
+    display: none;
+  }
+  .games-theater-cards {
+    grid-auto-columns: 160px;
+  }
+}
+@media (hover: none) {
+  .games-theater-close kbd {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .games-theater *,
+  .games-theater-ambient {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* Settings menu, laid out like a YouTube player's. */
+.games-hero-trailer-menu {
+  position: relative;
+}
+.games-trailer-menu-gear {
+  transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.games-hero-trailer-menu.is-open .games-trailer-menu-gear {
+  transform: rotate(30deg);
+}
+.games-player-control-row .games-hero-trailer-menu.is-open > .games-player-tip > button {
+  background: #ffffff1a;
+}
+.games-hero-trailer-popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  inset-inline-end: -44px;
+  width: 270px;
+  max-height: min(360px, 60vh);
+  max-height: min(360px, calc(100cqh - 76px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border-radius: 14px;
+  /* A real border: an inset shadow is painted beneath the rows and vanished behind a highlight. */
+  border: 1px solid #ffffff17;
+  background: #1c1c1ceb;
+  box-shadow: 0 18px 48px -12px #000000cc;
+  color: #f1f1f1;
+  animation: games-trailer-menu-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.games-player-control-row .games-hero-trailer-popover button {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 10px;
+  /* Highlights sit inset as rounded pills, clear of the menu's own edge. */
+  border-radius: 9px;
+  transition: background 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: start;
+  white-space: nowrap;
+}
+.games-player-control-row .games-hero-trailer-popover button:hover,
+.games-player-control-row .games-hero-trailer-popover button:focus-visible {
+  background: #ffffff1a;
+  outline: none;
+}
+.games-player-control-row .games-hero-trailer-popover button:active {
+  background: #ffffff24;
+}
+.games-trailer-menu-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.games-hero-trailer-popover small {
+  flex-shrink: 0;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 400;
+  color: #aaa;
+}
+.games-trailer-menu-check {
+  width: 16px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.games-player-control-row .games-hero-trailer-popover .games-trailer-menu-back {
+  height: 42px;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding-inline: 6px;
+  font-size: 14px;
+  position: relative;
+}
+/* The divider under the back row spans the menu without touching the row's highlight. */
+.games-player-control-row .games-hero-trailer-popover .games-trailer-menu-back::after {
+  content: "";
+  position: absolute;
+  inset: auto 4px -3px;
+  height: 1px;
+  background: #ffffff1f;
+}
+[dir="rtl"] .games-hero-trailer-popover .lucide-chevron-left,
+[dir="rtl"] .games-hero-trailer-popover .lucide-chevron-right {
+  transform: scaleX(-1);
+}
+@keyframes games-trailer-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .games-hero-trailer-popover,
+  .games-trailer-menu-gear {
+    animation: none;
+    transition: none;
+  }
+}
+/* A YouTube-style switch for menu toggles. */
+.games-trailer-menu-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 14px;
+  margin-inline-end: 4px;
+  border-radius: 999px;
+  background: #ffffff4d;
+  transition: background 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.games-trailer-menu-switch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  inset-inline-start: -2px;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: #bdbdbd;
+  box-shadow: 0 1px 3px #0006;
+  transition:
+    transform 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+    background 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+[aria-checked="true"] > .games-trailer-menu-switch {
+  background: #ff00004d;
+}
+[aria-checked="true"] > .games-trailer-menu-switch::after {
+  transform: translateX(18px);
+  background: #f00;
+}
+[dir="rtl"] [aria-checked="true"] > .games-trailer-menu-switch::after {
+  transform: translateX(-18px);
+}
+/* Live ambient light: two frame layers cross-fade so colour shifts glide like YouTube's. */
+.games-theater-ambient-live {
+  position: absolute;
+  inset: -6% -24% 2%;
+  /* A mask clips at the box, so the box runs well past the frame and every edge fades out:
+     an ellipse for the sides, and a top fade so a bright shot never washes out the title. */
+  -webkit-mask-image:
+    radial-gradient(ellipse 50% 50% at 50% 52%, #000 45%, transparent 100%),
+    linear-gradient(to bottom, transparent 4%, #000 30%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(ellipse 50% 50% at 50% 52%, #000 45%, transparent 100%),
+    linear-gradient(to bottom, transparent 4%, #000 30%);
+  mask-composite: intersect;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.games-theater-ambient-live.is-lit {
+  opacity: 0.8;
+}
+/* One canvas, blended frame by frame in script; a CSS fade here would trail behind cuts. */
+.games-theater-ambient-live > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: blur(100px) saturate(170%);
+  transform: scale(1.12);
+}
+@media (prefers-reduced-motion: reduce) {
+  .games-theater-ambient-live,
+  .games-theater-ambient-live > canvas {
+    transition: none;
+  }
+}
+/* Short windows: the player fills the visible height and the queue scrolls in beneath it. */
+@media (max-height: 640px) {
+  .games-theater-backdrop {
+    padding-block: 12px;
+  }
+  .games-theater {
+    gap: 10px;
+    width: min(100%, max(320px, calc((100dvh - 92px) * 16 / 9 + 12px)), 1320px);
+  }
+  .games-theater-eyebrow,
+  .games-theater-heading p,
+  .games-theater-close kbd {
+    display: none;
+  }
+  .games-theater-head {
+    align-items: center;
+  }
+  .games-theater-heading h2 {
+    margin: 0;
+    font-size: 20px;
+  }
+  .games-theater-close {
+    height: 34px;
+  }
+  .games-theater-close-icon {
+    width: 26px;
+    height: 26px;
+  }
+}
+/* Queue header: the title, then a segmented source filter when several catalogs list trailers. */
+.games-theater-queue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+/* Double bezel: a hairline tray around the segmented control. */
+.games-theater-filter-shell {
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px;
+  border-radius: 999px;
+  background: #ffffff0a;
+  box-shadow: inset 0 0 0 1px #ffffff17;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.games-theater-filter-shell::-webkit-scrollbar {
+  display: none;
+}
+.games-theater-filter {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  width: max-content;
+}
+.games-theater-filter-pill {
+  position: absolute;
+  inset-block: 0;
+  /* offsetLeft is measured from the left edge in both directions, so the pill anchors there. */
+  left: 0;
+  border-radius: 999px;
+  background: #f4f5f5;
+  box-shadow:
+    inset 0 1px 1px #ffffff,
+    0 4px 14px -6px #000000b3;
+  transition:
+    transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+    width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.games-theater-filter > button {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding-inline: 13px 9px;
+  border-radius: 999px;
+  color: #c9cccd;
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+  transition:
+    color 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.games-theater-filter > button > span {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #ffffff14;
+  color: #9da2a4;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  transition:
+    background 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+    color 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.games-theater-filter > button:hover:not([aria-pressed="true"]) {
+  color: #fff;
+}
+.games-theater-filter > button:active {
+  transform: scale(0.97);
+}
+.games-theater-filter > button[aria-pressed="true"] {
+  color: #111314;
+}
+.games-theater-filter > button[aria-pressed="true"] > span {
+  background: #1113141a;
+  color: #3a3e40;
+}
+.games-theater-filter > button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  .games-theater-queue-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .games-theater-filter-pill,
+  .games-theater-filter > button,
+  .games-theater-filter > button > span {
+    transition: none;
+  }
+}
+.games-theater-status small {
+  max-width: 340px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b1b5b7;
+  animation: games-theater-rise 0.6s var(--theater-ease) both;
+}

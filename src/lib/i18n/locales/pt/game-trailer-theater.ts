@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "Trailer",
+  "games.player.watchTrailer": "Ver trailer",
+  "games.player.closeTrailer": "Fechar trailer",
+  "games.player.settings": "Configurações do trailer",
+  "games.player.quality": "Qualidade",
+  "games.player.qualityAuto": "Automática",
+  "games.player.speed": "Velocidade de reprodução",
+  "games.player.speedNormal": "Normal",
+  "games.player.ambient": "Modo ambiente",
+  "games.player.allTrailers": "Trailers",
+  "games.player.watchTrailers": "Ver trailers · {count}",
+  "games.player.nextTrailer": "Próximo trailer (Shift+N)",
+  "games.player.loadingNamed": "Carregando {name}",
+  "games.player.nextSource": "Tentar a próxima fonte",
+  "games.player.clip": "Prévia curta",
+  "games.player.noTrailer": "Nenhum trailer deste jogo pôde ser reproduzido.",
+  "games.player.allSources": "Todos",
+  "games.player.filterSources": "Filtrar trailers",
+  "games.player.slowSource":
+    "Está demorando mais que o normal. Trailers do YouTube podem levar um momento na primeira vez.",
+} satisfies Record<string, string>;

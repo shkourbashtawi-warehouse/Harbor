@@ -24,6 +24,7 @@ async fn youtube_playback_verification_rejects_cdn_errors_and_empty_media() {
             audio_url: None,
             headers: [("User-Agent".to_string(), "fixture".to_string())].into(),
             transcode: false,
+            duration: None,
         };
         assert_eq!(verify_youtube_stream(&stream).await.is_ok(), accepted);
         server.join().unwrap();
@@ -52,6 +53,7 @@ async fn youtube_playback_verification_checks_video_and_audio() {
         audio_url: Some(audio),
         headers: [("User-Agent".to_string(), "fixture".to_string())].into(),
         transcode: true,
+        duration: None,
     };
     assert!(verify_youtube_stream(&stream).await.is_ok());
     video_server.join().unwrap();
@@ -79,6 +81,26 @@ fn selects_the_highest_hls_variant_at_or_below_the_requested_quality() {
     assert_eq!(select_hls_video(&formats, Some(720)).unwrap()["url"], "https://video/720");
     assert_eq!(select_hls_video(&formats, Some(1080)).unwrap()["url"], "https://video/1080");
     assert_eq!(select_hls_video(&formats, None).unwrap()["url"], "https://video/1440");
+}
+
+#[test]
+fn vertical_videos_are_judged_by_their_short_side() {
+    // A YouTube Short's real formats: the avc1 HLS variants run up to 1080x1920.
+    let formats = vec![
+        serde_json::json!({"protocol":"m3u8_native","vcodec":"avc1.4D401E","acodec":"none","width":480,"height":854,"url":"https://video/480"}),
+        serde_json::json!({"protocol":"https","vcodec":"vp9","acodec":"none","width":608,"height":1080,"url":"https://video/608"}),
+        serde_json::json!({"protocol":"m3u8_native","vcodec":"avc1.4D401F","acodec":"none","width":720,"height":1280,"url":"https://video/720"}),
+        serde_json::json!({"protocol":"m3u8_native","vcodec":"avc1.640028","acodec":"none","width":1080,"height":1920,"url":"https://video/1080"}),
+    ];
+    assert_eq!(highest_video_height(&formats), 1080);
+    assert_eq!(select_hls_video(&formats, Some(1080)).unwrap()["url"], "https://video/1080");
+    assert_eq!(select_hls_video(&formats, Some(720)).unwrap()["url"], "https://video/720");
+    assert_eq!(rendition(&formats[0]), Some(480));
+    // Landscape renditions, and formats that omit the width, still read as their height.
+    let landscape = serde_json::json!({"width":1920,"height":1080});
+    let no_width = serde_json::json!({"height":720});
+    assert_eq!(rendition(&landscape), Some(1080));
+    assert_eq!(rendition(&no_width), Some(720));
 }
 
 #[test]

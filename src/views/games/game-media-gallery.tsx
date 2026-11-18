@@ -16,12 +16,17 @@ export function GameMediaGallery({
   trailers,
   active,
   suspended = false,
+  onWatchTrailers,
+  trailerCount = 0,
 }: {
   screenshots: string[];
   screenshotThumbnails?: Record<string, string>;
   trailers: GameDetail["trailers"];
   active: boolean;
   suspended?: boolean;
+  /** When the page offers the trailer theater, videos live there and the gallery stays stills-only. */
+  onWatchTrailers?: () => void;
+  trailerCount?: number;
 }) {
   const t = useT(),
     strip = useRef<HTMLDivElement>(null),
@@ -40,7 +45,9 @@ export function GameMediaGallery({
   selectedRef.current = selected;
   columnsRef.current = columns;
   const media = [
-    ...trailers.filter((item) => item.url).map((item) => ({ ...item, type: "trailer" as const })),
+    ...(onWatchTrailers ? [] : trailers)
+      .filter((item) => item.url)
+      .map((item) => ({ ...item, type: "trailer" as const })),
     ...screenshots.map((url, index) => ({
       url,
       poster: screenshotThumbnails[url] || url,
@@ -116,6 +123,14 @@ export function GameMediaGallery({
             <span>
               <Maximize size={20} />
             </span>
+          </button>
+        )}
+        {onWatchTrailers && trailerCount > 0 && (
+          <button type="button" className="games-gallery-trailers" onClick={onWatchTrailers}>
+            <span className="games-gallery-trailers-icon">
+              <Play size={14} />
+            </span>
+            {t("games.player.watchTrailers", { count: trailerCount })}
           </button>
         )}
         {item.type === "image" && total > 1 && (

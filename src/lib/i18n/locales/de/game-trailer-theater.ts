@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "Trailer",
+  "games.player.watchTrailer": "Trailer ansehen",
+  "games.player.closeTrailer": "Trailer schließen",
+  "games.player.settings": "Trailer-Einstellungen",
+  "games.player.quality": "Qualität",
+  "games.player.qualityAuto": "Automatisch",
+  "games.player.speed": "Wiedergabegeschwindigkeit",
+  "games.player.speedNormal": "Normal",
+  "games.player.ambient": "Umgebungsmodus",
+  "games.player.allTrailers": "Trailer",
+  "games.player.watchTrailers": "Trailer ansehen · {count}",
+  "games.player.nextTrailer": "Nächster Trailer (Umschalt+N)",
+  "games.player.loadingNamed": "{name} wird geladen",
+  "games.player.nextSource": "Nächste Quelle versuchen",
+  "games.player.clip": "Kurze Vorschau",
+  "games.player.noTrailer": "Für dieses Spiel konnte kein Trailer abgespielt werden.",
+  "games.player.allSources": "Alle",
+  "games.player.filterSources": "Trailer filtern",
+  "games.player.slowSource":
+    "Das dauert länger als üblich. YouTube-Trailer brauchen beim ersten Mal einen Moment.",
+} satisfies Record<string, string>;

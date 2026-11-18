@@ -1,0 +1,125 @@
+import { useEffect, useRef, useState } from "react";
+
+const DRAG_THRESHOLD = 5;
+const LINE_HEIGHT = 40;
+
+/**
+ * Mouse-friendly horizontal rail: the vertical wheel scrolls sideways (and hands back to the
+ * page at either end), mouse drags pan it, and the reported edges drive arrow buttons and fades.
+ * Touch and trackpads keep native scrolling; keyboard focus scrolling is untouched.
+ * Returns a callback ref, so a rail that mounts later (say, once more items load) still binds.
+ */
+export function useRailScroll() {
+  const [node, setNode] = useState<HTMLElement | null>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+  const target = useRef<number | null>(null),
+    frame = useRef(0);
+
+  useEffect(() => {
+    if (!node) return;
+    const rtl = () => getComputedStyle(node).direction === "rtl";
+    const max = () => node.scrollWidth - node.clientWidth;
+    // Chromium reports RTL scroll positions as zero or negative.
+    const offset = () => Math.abs(node.scrollLeft);
+    const measure = () => {
+      const position = offset(),
+        limit = max();
+      setEdges({ start: position > 1, end: position < limit - 1 });
+    };
+    const animate = () => {
+      if (target.current === null) return;
+      const current = offset(),
+        next = current + (target.current - current) * 0.22;
+      const done = Math.abs(target.current - next) < 0.5;
+      const value = done ? target.current : next;
+      node.scrollLeft = rtl() ? -value : value;
+      if (done) target.current = null;
+      else frame.current = requestAnimationFrame(animate);
+    };
+    const wheel = (event: WheelEvent) => {
+      if (event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      const limit = max();
+      if (limit <= 0) return;
+      const delta = event.deltaY * (event.deltaMode === 1 ? LINE_HEIGHT : 1);
+      const from = target.current ?? offset();
+      // At either end the wheel belongs to the page again.
+      if ((delta < 0 && from <= 0) || (delta > 0 && from >= limit)) return;
+      event.preventDefault();
+      target.current = Math.max(0, Math.min(limit, from + delta));
+      cancelAnimationFrame(frame.current);
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        node.scrollLeft = rtl() ? -target.current : target.current;
+        target.current = null;
+      } else frame.current = requestAnimationFrame(animate);
+    };
+
+    let drag: { id: number; x: number; start: number; moved: boolean } | null = null;
+    const down = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse" || event.button !== 0 || max() <= 0) return;
+      drag = { id: event.pointerId, x: event.clientX, start: node.scrollLeft, moved: false };
+    };
+    const move = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const distance = event.clientX - drag.x;
+      if (!drag.moved) {
+        if (Math.abs(distance) < DRAG_THRESHOLD) return;
+        drag.moved = true;
+        target.current = null;
+        cancelAnimationFrame(frame.current);
+        node.setPointerCapture(event.pointerId);
+        node.dataset.dragging = "true";
+      }
+      node.scrollLeft = drag.start - distance;
+    };
+    const up = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const moved = drag.moved;
+      drag = null;
+      delete node.dataset.dragging;
+      if (node.hasPointerCapture(event.pointerId)) node.releasePointerCapture(event.pointerId);
+      // A drag is not a choice: swallow the click that follows it. A cancelled
+      // pointer gets no click, so a listener left behind would eat the next real one.
+      if (moved && event.type === "pointerup")
+        node.addEventListener(
+          "click",
+          (click) => {
+            click.preventDefault();
+            click.stopPropagation();
+          },
+          { capture: true, once: true },
+        );
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    node.addEventListener("scroll", measure, { passive: true });
+    node.addEventListener("wheel", wheel, { passive: false });
+    node.addEventListener("pointerdown", down);
+    node.addEventListener("pointermove", move);
+    node.addEventListener("pointerup", up);
+    node.addEventListener("pointercancel", up);
+    return () => {
+      cancelAnimationFrame(frame.current);
+      observer.disconnect();
+      node.removeEventListener("scroll", measure);
+      node.removeEventListener("wheel", wheel);
+      node.removeEventListener("pointerdown", down);
+      node.removeEventListener("pointermove", move);
+      node.removeEventListener("pointerup", up);
+      node.removeEventListener("pointercancel", up);
+    };
+  }, [node]);
+
+  /** Moves a page toward the start (-1) or end (1), respecting writing direction. */
+  const page = (step: -1 | 1) => {
+    if (!node) return;
+    const rtl = getComputedStyle(node).direction === "rtl";
+    node.scrollBy({
+      left: step * node.clientWidth * 0.8 * (rtl ? -1 : 1),
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  };
+
+  return { ref: setNode, edges, page };
+}

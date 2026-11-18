@@ -48,7 +48,7 @@ export async function jikanScore(malId: number): Promise<string | null> {
   return p;
 }
 
-async function resolveMalId(metaId: string): Promise<number | null> {
+export async function resolveMalId(metaId: string): Promise<number | null> {
   if (metaId.startsWith("mal:")) {
     const n = Number(metaId.slice(4));
     return Number.isFinite(n) ? n : null;

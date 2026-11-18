@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "예고편",
+  "games.player.watchTrailer": "예고편 보기",
+  "games.player.closeTrailer": "예고편 닫기",
+  "games.player.settings": "예고편 설정",
+  "games.player.quality": "화질",
+  "games.player.qualityAuto": "자동",
+  "games.player.speed": "재생 속도",
+  "games.player.speedNormal": "보통",
+  "games.player.ambient": "앰비언트 모드",
+  "games.player.allTrailers": "예고편",
+  "games.player.watchTrailers": "예고편 보기 · {count}",
+  "games.player.nextTrailer": "다음 예고편 (Shift+N)",
+  "games.player.loadingNamed": "{name} 불러오는 중",
+  "games.player.nextSource": "다음 소스 시도",
+  "games.player.clip": "짧은 미리보기",
+  "games.player.noTrailer": "이 게임의 예고편을 재생할 수 없습니다.",
+  "games.player.allSources": "전체",
+  "games.player.filterSources": "예고편 필터",
+  "games.player.slowSource":
+    "평소보다 오래 걸리고 있습니다. YouTube 예고편은 처음에 시간이 조금 걸릴 수 있습니다.",
+} satisfies Record<string, string>;

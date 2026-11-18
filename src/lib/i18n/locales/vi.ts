@@ -20,6 +20,7 @@ import gameLibraryTitles from "./vi/game-library-titles";
 import gameStoreSearch from "./vi/game-store-search";
 import gameSteamShortcuts from "./vi/game-steam-shortcuts";
 import gameGallery from "./vi/game-gallery";
+import gameTrailerTheater from "./vi/game-trailer-theater";
 import gameStardew from "./vi/game-stardew";
 import gameSourceAlerts from "./vi/game-source-alerts";
 import gameSims from "./vi/game-sims";
@@ -378,6 +379,7 @@ const vi: Record<string, string> = {
   ...gameHydraImport,
   ...gameSteamShortcuts,
   ...gameGallery,
+  ...gameTrailerTheater,
   ...gameAgeRatings,
   ...gameMetadataMatching,
   ...gameArtwork,

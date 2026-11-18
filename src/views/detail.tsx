@@ -199,8 +199,14 @@ import { HeroRatings } from "./detail/hero-ratings";
 import { TrailerOverlay } from "./detail/trailer-overlay";
 import { DetailHeroTrailer } from "./detail/detail-hero-trailer";
 import { useScrollUpTrailer } from "./detail/use-scroll-up-trailer";
-import { prefetchTrailerDownload, resolveTrailerQuality } from "@/lib/trailer";
+import { prefetchTrailer as warmTrailer, resolveTrailerQuality } from "@/lib/trailer";
 import { mergeTrailerCandidates } from "@/lib/trailer-candidates";
+import { titleTrailerSources, type TrailerListing } from "@/lib/title-trailers";
+import { useMalTrailers } from "@/lib/mal-trailers";
+import { GameTrailerTheater } from "./games/game-trailer-theater";
+
+// The theater plays YouTube through the native resolver; browsers keep the embed overlay.
+const NATIVE_TRAILERS = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 import { SeriesEpisodes } from "./detail/series-episodes";
 import { CinemetaEpisodes } from "./detail/cinemeta-episodes";
 import { AnimeEpisodes } from "./detail/anime-episodes";
@@ -607,9 +613,69 @@ export function DetailView({
     franchise,
   ]);
   const trailerCandidate = trailerCandidates[0] ?? null;
+  const malTrailers = useMalTrailers(
+    isAnime ? (animeCanonicalId ?? meta.id) : undefined,
+    trailerOpen,
+  );
+  const trailerSources = useMemo(() => {
+    // trailerCandidates already holds the playback order; the listings only name each video
+    // and its catalog, ranked the same way so a video listed twice keeps the leading catalog.
+    const fromSources: TrailerListing = {
+      via: sourceText.sourceNames?.trailers,
+      videos: (sourceText.trailerCandidates ?? []).map((id) => ({ id })),
+    };
+    const fromDetail: TrailerListing = {
+      via: detail?.trailerSource,
+      videos: [
+        ...(detail?.trailerVideos ?? []).map((video) => ({ id: video.ytId, name: video.name })),
+        ...(detail?.trailerCandidates ?? []).map((id) => ({ id })),
+      ],
+    };
+    const known = new Map(
+      titleTrailerSources([
+        ...(animeIdentity ? [fromDetail, fromSources] : [fromSources, fromDetail]),
+        {
+          via: meta.addonOrigin?.name,
+          videos: [
+            ...(meta.trailerStreams ?? []).map((trailer) => ({
+              id: trailer.ytId,
+              name: trailer.title,
+            })),
+            ...(meta.trailers ?? []).map((trailer) => ({ id: trailer.source })),
+          ],
+        },
+        {
+          videos: franchise
+            .flatMap((entry) => entry.meta.trailerStreams ?? [])
+            .map((trailer) => ({ id: trailer.ytId, name: trailer.title })),
+        },
+      ]).map((source) => [source.id, source]),
+    );
+    return titleTrailerSources([
+      ...trailerCandidates.map((id) => ({
+        via: known.get(id)?.via,
+        videos: [{ id, name: known.get(id)?.name }],
+      })),
+      { via: "MyAnimeList", videos: malTrailers },
+    ]);
+  }, [
+    animeIdentity,
+    trailerCandidates,
+    sourceText.trailerCandidates,
+    sourceText.sourceNames?.trailers,
+    detail?.trailerSource,
+    detail?.trailerVideos,
+    detail?.trailerCandidates,
+    meta.addonOrigin?.name,
+    meta.trailerStreams,
+    meta.trailers,
+    franchise,
+    malTrailers,
+  ]);
   const prefetchTrailer = useCallback(() => {
     if (trailerCandidate) {
-      prefetchTrailerDownload(trailerCandidate, resolveTrailerQuality(settings.trailerQuality));
+      // Warms the stream the trailer theater requests first.
+      warmTrailer(trailerCandidate, resolveTrailerQuality(settings.trailerQuality));
     }
   }, [trailerCandidate, settings.trailerQuality]);
 
@@ -3515,7 +3581,16 @@ export function DetailView({
         )}
       </div>
       <BackToTop scrollRef={scrollRef} />
-      {trailerOpen && trailerCandidate && (
+      {trailerOpen && trailerCandidate && NATIVE_TRAILERS && (
+        <GameTrailerTheater
+          title={title}
+          art={backdrop || meta.background || meta.poster || ""}
+          sources={trailerSources}
+          active
+          onClose={() => setTrailerOpen(false)}
+        />
+      )}
+      {trailerOpen && trailerCandidate && !NATIVE_TRAILERS && (
         <TrailerOverlay
           id={trailerCandidate}
           candidateIds={trailerCandidates}

@@ -1,0 +1,22 @@
+export default {
+  "games.trailer": "予告編",
+  "games.player.watchTrailer": "予告編を見る",
+  "games.player.closeTrailer": "予告編を閉じる",
+  "games.player.settings": "予告編の設定",
+  "games.player.quality": "画質",
+  "games.player.qualityAuto": "自動",
+  "games.player.speed": "再生速度",
+  "games.player.speedNormal": "標準",
+  "games.player.ambient": "アンビエントモード",
+  "games.player.allTrailers": "予告編",
+  "games.player.watchTrailers": "予告編を見る · {count}",
+  "games.player.nextTrailer": "次の予告編 (Shift+N)",
+  "games.player.loadingNamed": "{name} を読み込み中",
+  "games.player.nextSource": "次のソースを試す",
+  "games.player.clip": "短いプレビュー",
+  "games.player.noTrailer": "このゲームの予告編を再生できませんでした。",
+  "games.player.allSources": "すべて",
+  "games.player.filterSources": "予告編を絞り込む",
+  "games.player.slowSource":
+    "いつもより時間がかかっています。YouTube の予告編は初回に少し時間がかかることがあります。",
+} satisfies Record<string, string>;

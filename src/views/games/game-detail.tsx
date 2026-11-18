@@ -45,6 +45,8 @@ import type { GameDetail, GameSummary } from "@/lib/games/types";
 import { GameArt } from "./game-art";
 import { GameHeroLogo } from "./game-hero-logo";
 import { GameMediaGallery } from "./game-media-gallery";
+import { GameTrailerTheater } from "./game-trailer-theater";
+import { heroTrailerSources } from "@/lib/games/hero-trailer";
 import { GameLaunchButton } from "./game-library";
 import type { SteamLibraryState } from "@/hooks/use-steam-library";
 import { GAME_TAGS, type CatalogFilters } from "@/lib/games/catalog-filters";
@@ -273,6 +275,13 @@ export function GameDetailPage({
   const [backups, setBackups] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [pricesOpen, setPricesOpen] = useState(false);
+  const [trailerOpen, setTrailerOpen] = useState(false);
+  const trailerOpener = useRef<HTMLElement | null>(null);
+  useEffect(() => setTrailerOpen(false), [game.id]);
+  // Views stay mounted while hidden; the theater is portaled, so it must not outlive the page.
+  useEffect(() => {
+    if (!active) setTrailerOpen(false);
+  }, [active]);
   const [allDetails, setAllDetails] = useState(false),
     [roomy, setRoomy] = useState(() => window.innerWidth >= 1100 && window.innerHeight >= 850);
   useEffect(() => {
@@ -381,6 +390,21 @@ export function GameDetailPage({
     atlas?.gameType ?? portableGame.gameType ?? game.gameType,
   );
   const shots = detail?.screenshots ?? [];
+  const heroTrailers = heroTrailerSources({
+    trailers: detail?.trailers ?? [],
+    videos: atlas?.videos ?? [],
+    steamId,
+    youtube: "__TAURI_INTERNALS__" in window,
+  });
+  const trailerCount = heroTrailers.filter((source) => source.kind !== "clip").length;
+  const openTrailer = (opener: HTMLElement) => {
+    trailerOpener.current = opener;
+    setTrailerOpen(true);
+  };
+  const closeTrailer = () => {
+    setTrailerOpen(false);
+    requestAnimationFrame(() => trailerOpener.current?.focus({ preventScroll: true }));
+  };
   const installed = library.scan?.games.find((item) => item.appId === steamId);
   const customCopies = matchingCustomGames(customLibrary.data.games, target);
   const customCopy =
@@ -618,6 +642,18 @@ export function GameDetailPage({
                   </button>
                 ))
               )}
+              {trailerCount > 0 && (
+                <button
+                  type="button"
+                  className="games-detail-steam-action games-detail-trailer-action"
+                  onClick={(event) => openTrailer(event.currentTarget)}
+                >
+                  <span className="games-detail-trailer-glyph">
+                    <Play size={12} />
+                  </span>
+                  {t("games.player.watchTrailer")}
+                </button>
+              )}
               {steamLinkId && (
                 <a
                   className="games-detail-steam-action"
@@ -741,6 +777,15 @@ export function GameDetailPage({
           )}
         </div>
       </section>
+      {trailerOpen && (
+        <GameTrailerTheater
+          title={displayName}
+          art={detail?.libraryHero || detail?.hero || shots[0] || game.capsule}
+          sources={heroTrailers}
+          active={active}
+          onClose={closeTrailer}
+        />
+      )}
       {storeDetail?.cachedAt !== undefined && (
         <div className="games-inset">
           <GameDataStatus
@@ -770,7 +815,13 @@ export function GameDetailPage({
                 screenshotThumbnails={detail.screenshotThumbnails}
                 trailers={detail.trailers}
                 active={active}
-                suspended={backups || achievementsOpen || pricesOpen}
+                suspended={backups || achievementsOpen || pricesOpen || trailerOpen}
+                trailerCount={trailerCount}
+                onWatchTrailers={
+                  trailerCount > 0
+                    ? () => openTrailer(document.activeElement as HTMLElement)
+                    : undefined
+                }
               />
               <section className="games-about" aria-label={t("games.about")}>
                 <GamePublisherAbout
