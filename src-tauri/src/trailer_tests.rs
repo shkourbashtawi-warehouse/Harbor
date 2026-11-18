@@ -493,3 +493,21 @@ fn addon_youtube_stream_preserves_url_and_headers_without_downloading() {
     assert!(parse_youtube_stream(br#"{"url":"file:///private"}"#).is_err());
     assert!(parse_youtube_stream(br#"{"requested_formats":[]}"#).is_err());
 }
+
+#[test]
+fn capped_download_selectors_measure_the_shorter_side() {
+    // A 720x1280 rendition counts as 720p for streaming, so the download fallback at that
+    // quality must reach it before settling for a smaller portrait rendition by height.
+    for (format, cap) in [
+        (FORMAT_LOW, 360),
+        (FORMAT_HIGH, 720),
+        (FORMAT_1080, 1080),
+        (FORMAT_LOW_MERGED, 360),
+        (FORMAT_HIGH_MERGED, 720),
+    ] {
+        let portrait = format.find(&format!("[width<={cap}][height>{cap}]"));
+        let landscape = format.find(&format!("[height<={cap}]"));
+        assert!(portrait.is_some() && portrait < landscape, "{format}");
+    }
+    assert!(FORMAT_HIGH_MERGED.ends_with("best[height<=720][ext=mp4][vcodec!=none][acodec!=none]"));
+}

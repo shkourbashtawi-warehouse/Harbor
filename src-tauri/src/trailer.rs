@@ -9,16 +9,79 @@ const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(120);
 const CACHE_MAX_BYTES: u64 = 1_500_000_000;
 const CACHE_MAX_AGE: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
-const FORMAT_LOW: &str = "best[height<=360][ext=mp4][vcodec!=none][acodec!=none]";
-const FORMAT_HIGH: &str = "best[height<=720][ext=mp4][vcodec!=none][acodec!=none]";
-const FORMAT_1080: &str =
-    "bestvideo[height<=1080][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/bestvideo[height<=1080]+bestaudio/best[height<=1080]";
+// Stream eligibility measures a rendition by its shorter side, and the download fallback must
+// agree. yt-dlp filters cannot take min(width, height), so each capped selector first tries
+// portrait renditions (only a portrait frame is taller than the cap with its width inside it),
+// then caps the height. A landscape video never matches the portrait branch.
+macro_rules! progressive {
+    ($side:literal) => {
+        concat!("best", $side, "[ext=mp4][vcodec!=none][acodec!=none]")
+    };
+}
+macro_rules! merged {
+    ($side:literal) => {
+        concat!(
+            "bestvideo",
+            $side,
+            "[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/",
+            "bestvideo",
+            $side,
+            "[ext=mp4]+bestaudio[ext=m4a]/",
+            "bestvideo",
+            $side,
+            "+bestaudio/",
+            progressive!($side)
+        )
+    };
+}
+macro_rules! merged_any {
+    ($side:literal) => {
+        concat!(
+            "bestvideo",
+            $side,
+            "[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/",
+            "bestvideo",
+            $side,
+            "[ext=mp4]+bestaudio[ext=m4a]/",
+            "best",
+            $side,
+            "[ext=mp4]/",
+            "bestvideo",
+            $side,
+            "+bestaudio/",
+            "best",
+            $side
+        )
+    };
+}
+
+const FORMAT_LOW: &str = concat!(
+    progressive!("[width<=360][height>360]"),
+    "/",
+    progressive!("[height<=360]")
+);
+const FORMAT_HIGH: &str = concat!(
+    progressive!("[width<=720][height>720]"),
+    "/",
+    progressive!("[height<=720]")
+);
+const FORMAT_1080: &str = concat!(
+    merged_any!("[width<=1080][height>1080]"),
+    "/",
+    merged_any!("[height<=1080]")
+);
 const FORMAT_BEST: &str =
     "bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/bestvideo+bestaudio/best";
-const FORMAT_LOW_MERGED: &str =
-    "bestvideo[height<=360][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=360]+bestaudio/best[height<=360][ext=mp4][vcodec!=none][acodec!=none]";
-const FORMAT_HIGH_MERGED: &str =
-    "bestvideo[height<=720][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720][ext=mp4][vcodec!=none][acodec!=none]";
+const FORMAT_LOW_MERGED: &str = concat!(
+    merged!("[width<=360][height>360]"),
+    "/",
+    merged!("[height<=360]")
+);
+const FORMAT_HIGH_MERGED: &str = concat!(
+    merged!("[width<=720][height>720]"),
+    "/",
+    merged!("[height<=720]")
+);
 
 fn cache_dir() -> PathBuf {
     std::env::temp_dir().join("harbor-trailers")
