@@ -28,12 +28,14 @@ export function useRailScroll() {
     };
     const animate = () => {
       if (target.current === null) return;
+      // The rail can shrink mid-animation (a filter, a resize): aim at what is still reachable.
+      const goal = Math.max(0, Math.min(max(), target.current));
       const current = offset(),
-        next = current + (target.current - current) * 0.22;
-      const done = Math.abs(target.current - next) < 0.5;
-      const value = done ? target.current : next;
-      node.scrollLeft = rtl() ? -value : value;
-      if (done) target.current = null;
+        next = current + (goal - current) * 0.22;
+      const done = Math.abs(goal - next) < 0.5;
+      node.scrollLeft = rtl() ? -(done ? goal : next) : done ? goal : next;
+      // A write the browser clamped back means the goal cannot be reached; stop there.
+      if (done || Math.abs(offset() - current) < 0.1) target.current = null;
       else frame.current = requestAnimationFrame(animate);
     };
     const wheel = (event: WheelEvent) => {
@@ -121,5 +123,12 @@ export function useRailScroll() {
     });
   };
 
-  return { ref: setNode, edges, page };
+  /** Jumps back to the start, dropping any wheel animation still heading elsewhere. */
+  const reset = () => {
+    cancelAnimationFrame(frame.current);
+    target.current = null;
+    node?.scrollTo({ left: 0 });
+  };
+
+  return { ref: setNode, edges, page, reset };
 }

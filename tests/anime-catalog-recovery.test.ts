@@ -7,6 +7,7 @@ import {
   ANIME_CATALOG_FALLBACK,
 } from "../src/lib/providers/anime-catalog-client.ts";
 import { createBrowseCache } from "../src/lib/anilist/browse-cache.ts";
+import { malPromosFromResponse } from "../src/lib/mal-trailers.ts";
 import { AnilistApiError } from "../src/lib/anilist/errors.ts";
 
 const json = (data: unknown) => Response.json({ data });
@@ -170,6 +171,38 @@ test("a missing title does not disable unrelated discovery requests", async () =
   await assert.rejects(client("/anime/999999"), /HTTP 404/);
   await client("/seasons/now");
   assert.equal(calls.at(-1), `${ANIME_CATALOG_BASE}/seasons/now`);
+});
+
+test("an anime's videos object passes validation and keeps the provider available", async () => {
+  const calls: string[] = [];
+  const client = createAnimeCatalogClient({
+    intervalMs: 0,
+    fetch: async (url) => {
+      calls.push(String(url));
+      return String(url).endsWith("/videos")
+        ? json({
+            promo: [
+              {
+                title: "PV 1",
+                trailer: {
+                  youtube_id: null,
+                  embed_url: "https://www.youtube.com/embed/abcdefghijk",
+                },
+              },
+            ],
+            episodes: [],
+            music_videos: [],
+          })
+        : json([{ mal_id: 1 }]);
+    },
+  });
+  const videos = await client<Parameters<typeof malPromosFromResponse>[0]>("/anime/1/videos");
+  assert.deepEqual(malPromosFromResponse(videos.data), [{ id: "abcdefghijk", name: "PV 1" }]);
+  await client("/seasons/now");
+  assert.deepEqual(calls, [
+    `${ANIME_CATALOG_BASE}/anime/1/videos`,
+    `${ANIME_CATALOG_BASE}/seasons/now`,
+  ]);
 });
 
 test("catalog rejects unrelated destinations", async () => {

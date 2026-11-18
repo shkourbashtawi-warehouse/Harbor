@@ -202,6 +202,13 @@ export function prefetchTrailerDownload(
 
 /** Drops a resolved trailer so the next request resolves it afresh (for example after the
  *  stream it pointed at stopped working). */
+/** Drops every cached resolution of a video, whatever quality it was asked for. */
+export function forgetTrailerVideo(videoId: string): void {
+  for (const map of [streamCache, cache] as Map<string, unknown>[]) {
+    for (const key of [...map.keys()]) if (key.startsWith(`${videoId}:`)) map.delete(key);
+  }
+}
+
 export function forgetTrailer(videoId: string, quality: Quality): void {
   const key = cacheKey(videoId, quality);
   streamCache.delete(key);

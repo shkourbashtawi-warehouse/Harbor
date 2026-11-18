@@ -87,12 +87,17 @@ export function createAnimeCatalogClient(
             throw new Error("Invalid anime catalog response");
           }
           const detail = /^\/anime\/\d+(?:\/full)?(?:\?|$)/.test(path);
+          // An anime's videos come back as one object of promo, episode and music lists.
+          const videos = /^\/anime\/\d+\/videos(?:\?|$)/.test(path);
+          const data = payload.data as object;
           if (
-            detail
-              ? Array.isArray(payload.data) ||
-                typeof payload.data !== "object" ||
-                !("mal_id" in payload.data)
-              : !Array.isArray(payload.data)
+            videos
+              ? Array.isArray(data) ||
+                typeof data !== "object" ||
+                !Array.isArray((data as { promo?: unknown }).promo)
+              : detail
+                ? Array.isArray(data) || typeof data !== "object" || !("mal_id" in data)
+                : !Array.isArray(data)
           ) {
             throw new Error("Invalid anime catalog data");
           }

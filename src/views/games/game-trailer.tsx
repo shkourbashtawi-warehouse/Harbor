@@ -1,5 +1,6 @@
 import { Play } from "@/components/icons/play-filled";
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -349,25 +350,36 @@ export function GameTrailer({
   }, [rate, ready]);
   // Element fullscreen only fills the webview. The app's own window fullscreen (which honours
   // the user's fullscreen mode) runs with it, and is undone only if this player started it.
-  const ownsWindowFullscreen = useRef(false);
+  const ownsWindowFullscreen = useRef(false),
+    windowEntry = useRef<Promise<void> | null>(null),
+    unmounted = useRef(false);
+  // Restores the window this player took over. An entry still in flight (borderless mode
+  // resizes the window asynchronously) settles first, so the exit undoes what it applied.
+  const releaseWindow = useCallback(() => {
+    if (!ownsWindowFullscreen.current) return;
+    ownsWindowFullscreen.current = false;
+    const pending = windowEntry.current;
+    if (pending)
+      void pending.then(
+        () => exitWindowFullscreen(),
+        () => exitWindowFullscreen(),
+      );
+    else void exitWindowFullscreen();
+  }, []);
   useEffect(() => {
+    unmounted.current = false;
     const change = () => {
       const mine = document.fullscreenElement === root.current;
       setFullscreen(mine);
-      if (!mine && ownsWindowFullscreen.current) {
-        ownsWindowFullscreen.current = false;
-        void exitWindowFullscreen();
-      }
+      if (!mine) releaseWindow();
     };
     document.addEventListener("fullscreenchange", change);
     return () => {
+      unmounted.current = true;
       document.removeEventListener("fullscreenchange", change);
-      if (ownsWindowFullscreen.current) {
-        ownsWindowFullscreen.current = false;
-        void exitWindowFullscreen();
-      }
+      releaseWindow();
     };
-  }, []);
+  }, [releaseWindow]);
   const claimSound = () => {
     for (const other of document.querySelectorAll<HTMLMediaElement>(
       ".games-view audio,.games-view video",
@@ -460,15 +472,19 @@ export function GameTrailer({
     const enter = async () => {
       if (native) {
         ownsWindowFullscreen.current = true;
-        await enterWindowFullscreen();
+        const entry = enterWindowFullscreen();
+        windowEntry.current = entry;
+        try {
+          await entry;
+        } finally {
+          if (windowEntry.current === entry) windowEntry.current = null;
+        }
       }
+      // Closed while the window was changing: the release already queued its restore.
+      if (unmounted.current) return;
       await node.requestFullscreen();
     };
-    void enter().catch(() => {
-      if (!ownsWindowFullscreen.current) return;
-      ownsWindowFullscreen.current = false;
-      void exitWindowFullscreen();
-    });
+    void enter().catch(releaseWindow);
   };
   const flash = (icon: ReactNode, label?: string) => {
     // Reduced motion disables the animation that would remove the bezel.

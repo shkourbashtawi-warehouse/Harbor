@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { Play as PlayLine, RotateCcw, SkipForward, X } from "lucide-react";
+import { ExternalLink, Play as PlayLine, RotateCcw, SkipForward, X } from "lucide-react";
 import { ModalShell, useModalExit } from "@/components/modal-shell";
 import { NavChevron } from "@/components/nav-arrow";
 import { useRailScroll } from "@/hooks/use-rail-scroll";
 import { useT } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
+import { openUrl } from "@/lib/window";
 import { loadGameMicrotrailer } from "@/lib/games/catalog";
 import {
   YOUTUBE_TRAILER_HEIGHTS,
@@ -21,6 +22,7 @@ import {
 import {
   fetchTrailer,
   forgetTrailer,
+  forgetTrailerVideo,
   resolveTrailerQuality,
   trailerSrc,
   type Quality,
@@ -110,7 +112,11 @@ export function GameTrailerTheater({
     [indicator, setIndicator] = useState<{ x: number; width: number } | null>(null),
     [ambient, setAmbient] = useState(storedAmbient),
     [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null),
-    [attempts, setAttempts] = useState<Readonly<Record<string, number>>>({}),
+    // Per source: the load generation (part of every load's identity) and the playback
+    // retries spent since its last fresh start.
+    [loads, setLoads] = useState<Readonly<Record<string, { generation: number; retries: number }>>>(
+      {},
+    ),
     [slowKey, setSlowKey] = useState<string | null>(null);
   const stage = useRef<HTMLDivElement>(null),
     queue = useRef<HTMLDivElement>(null),
@@ -143,19 +149,23 @@ export function GameTrailerTheater({
         : resolveTrailerQuality(settings.trailerQuality)
       : undefined;
   const requestKey = source ? `${source.key}@${youtubeQuality ?? ""}` : "";
-  const attempt = attempts[requestKey] ?? 0;
+  const load = source ? loads[source.key] : undefined;
   // Changes on every retry, so the request and the player both start over.
-  const loadKey = `${requestKey}#${attempt}`;
+  const loadKey = `${requestKey}#${load?.generation ?? 0}`;
   const sourceKey = source?.key;
+  const markFailed = (key: string) => setFailed((previous) => new Set(previous).add(key));
   const skip = () => {
-    if (sourceKey) setFailed((previous) => new Set(previous).add(sourceKey));
+    if (sourceKey) markFailed(sourceKey);
   };
-  const skipRef = useRef(skip);
-  skipRef.current = skip;
 
   useEffect(() => {
     if (!source || source.kind === "steam") return;
     let current = true;
+    // A failure belongs to the trailer that was asked for, never to whatever is selected
+    // by the time it arrives.
+    const fail = () => {
+      if (current) markFailed(source.key);
+    };
     // A YouTube trailer is only skipped when the resolver reports failure, never for time.
     const request =
       source.kind === "youtube"
@@ -171,16 +181,11 @@ export function GameTrailerTheater({
       if (current) setSlowKey(loadKey);
     }, SLOW_SOURCE_MS);
     request
-      .then(
-        ({ url, duration }) => {
-          if (!current) return;
-          if (url) setResolved({ key: loadKey, url, duration });
-          else skipRef.current();
-        },
-        () => {
-          if (current) skipRef.current();
-        },
-      )
+      .then(({ url, duration }) => {
+        if (!current) return;
+        if (url) setResolved({ key: loadKey, url, duration });
+        else fail();
+      }, fail)
       .finally(() => clearTimeout(slow));
     return () => {
       current = false;
@@ -205,8 +210,11 @@ export function GameTrailerTheater({
     const active = group?.querySelector<HTMLElement>("[aria-pressed=true]");
     setIndicator(active ? { x: active.offsetLeft, width: active.offsetWidth } : null);
   }, [activeFilter, facetLayout, sources.length]);
+  const resetRail = rail.reset;
   useEffect(() => {
-    queue.current?.scrollTo({ left: 0 });
+    resetRail();
+    // Only a filter change resets the strip; the reset function changes every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter]);
   const url = source?.kind === "steam" ? source.url : resolved?.key === loadKey ? resolved.url : "";
   const slow = slowKey === loadKey && !url;
@@ -214,12 +222,37 @@ export function GameTrailerTheater({
   // trailer once more before moving on.
   const playbackFailed = () => {
     if (!source) return;
-    if (attempt >= PLAYBACK_RETRIES) {
+    if ((load?.retries ?? 0) >= PLAYBACK_RETRIES) {
       skip();
       return;
     }
     if (source.kind === "youtube" && youtubeQuality) forgetTrailer(source.id, youtubeQuality);
-    setAttempts((previous) => ({ ...previous, [requestKey]: (previous[requestKey] ?? 0) + 1 }));
+    const key = source.key;
+    setLoads((previous) => ({
+      ...previous,
+      [key]: {
+        generation: (previous[key]?.generation ?? 0) + 1,
+        retries: (previous[key]?.retries ?? 0) + 1,
+      },
+    }));
+  };
+  // Gives failed sources a clean start: no cached failure, a new load identity and a full
+  // retry budget. A slow source the viewer skipped never failed, so its request carries on.
+  const revive = (items: HeroTrailerSource[]) => {
+    const dead = items.filter((item) => failed.has(item.key));
+    if (!dead.length) return;
+    for (const item of dead) if (item.kind === "youtube") forgetTrailerVideo(item.id);
+    setLoads((previous) => {
+      const next = { ...previous };
+      for (const item of dead)
+        next[item.key] = { generation: (previous[item.key]?.generation ?? 0) + 1, retries: 0 };
+      return next;
+    });
+    setFailed((previous) => {
+      const next = new Set(previous);
+      for (const item of dead) next.delete(item.key);
+      return next;
+    });
   };
   useEffect(() => {
     const node = stage.current;
@@ -276,11 +309,7 @@ export function GameTrailerTheater({
   const choose = (item: HeroTrailerSource) => {
     setChosen(item.key);
     // A manual pick deserves a fresh attempt even if it failed earlier.
-    setFailed((previous) => {
-      const next = new Set(previous);
-      next.delete(item.key);
-      return next;
-    });
+    revive([item]);
   };
   const sourceName = (item: HeroTrailerSource) =>
     item.kind === "clip"
@@ -306,6 +335,9 @@ export function GameTrailerTheater({
   const order = source && shown.includes(source) ? shown : sources;
   const after = source ? order.slice(order.indexOf(source) + 1) : [];
   const upNext = after.find((item) => !failed.has(item.key));
+  // When nothing plays here, YouTube itself may still: offer the viewer's pick, else the first.
+  const youtube = sources.filter((item) => item.kind === "youtube");
+  const external = youtube.find((item) => item.key === chosen) ?? youtube[0];
 
   return (
     <ModalShell
@@ -423,11 +455,21 @@ export function GameTrailerTheater({
                           className="games-theater-pill"
                           onClick={() => {
                             setChosen(null);
-                            setFailed(new Set());
+                            revive(sources);
                           }}
                         >
                           <RotateCcw size={15} strokeWidth={1.75} />
                           {t("games.player.retry")}
+                        </button>
+                      )}
+                      {external && (
+                        <button
+                          type="button"
+                          className="games-theater-pill"
+                          onClick={() => openUrl(`https://www.youtube.com/watch?v=${external.id}`)}
+                        >
+                          <ExternalLink size={15} strokeWidth={1.75} />
+                          {t("Watch on YouTube")}
                         </button>
                       )}
                     </>
