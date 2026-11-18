@@ -284,9 +284,24 @@ export function GameTrailerTheater({
     // loadKey: a retry can replace the player while the URL stays the same.
   }, [url, loadKey]);
   useEffect(() => {
-    queue.current
-      ?.querySelector<HTMLElement>("[aria-current=true]")
-      ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    const rail = queue.current,
+      card = rail?.querySelector<HTMLElement>("[aria-current=true]");
+    if (!rail || !card) return;
+    // scrollIntoView would also scroll the backdrop, which in short windows pushes the title
+    // and player out of view. Only the rail moves; rect offsets hold in LTR and RTL alike.
+    const bounds = rail.getBoundingClientRect(),
+      box = card.getBoundingClientRect();
+    const shift =
+      box.left < bounds.left
+        ? box.left - bounds.left
+        : box.right > bounds.right
+          ? Math.min(box.right - bounds.right, box.left - bounds.left)
+          : 0;
+    if (Math.abs(shift) < 1) return;
+    rail.scrollBy({
+      left: shift,
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
   }, [sourceKey]);
 
   // The browser leaves full screen on Escape before the key reaches the page,

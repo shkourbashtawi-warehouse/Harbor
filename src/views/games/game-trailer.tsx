@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
@@ -21,28 +22,18 @@ import {
 } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import {
+  afterWindowTransition,
   enterWindowFullscreen,
   exitWindowFullscreen,
   fullscreenMode,
   getWindowFullscreen,
+  isWindowTransitionPending,
+  subscribeWindowTransition,
+  trackWindowTransition,
 } from "@/lib/fullscreen-state";
 import "./game-detail-media.css";
 
 const VOLUME_KEY = "harbor.games.trailer-volume.v1";
-// The native window change in flight, entry or restore, shared by every trailer player: one
-// window, so a replacement player must not enter while the previous one is still restoring.
-// Borderless mode resizes the window asynchronously, and an overlapping change saves the
-// wrong bounds.
-const windowTransition: { current: Promise<void> | null } = { current: null };
-function trackWindowTransition(change: Promise<void>): Promise<void> {
-  windowTransition.current = change;
-  void change
-    .catch(() => {})
-    .finally(() => {
-      if (windowTransition.current === change) windowTransition.current = null;
-    });
-  return change;
-}
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
 function initialVolume() {
   try {
@@ -62,17 +53,26 @@ function Control({
   children,
   onClick,
   pressed,
+  busy,
   className = "",
 }: {
   label: string;
   children: ReactNode;
   onClick: () => void;
   pressed?: boolean;
+  /** Unavailable for now; aria-disabled keeps the button focusable for remote navigation. */
+  busy?: boolean;
   className?: string;
 }) {
   return (
     <span className={`games-player-tip ${className}`}>
-      <button type="button" aria-label={label} aria-pressed={pressed} onClick={onClick}>
+      <button
+        type="button"
+        aria-label={label}
+        aria-pressed={pressed}
+        aria-disabled={busy || undefined}
+        onClick={busy ? undefined : onClick}
+      >
         {children}
       </button>
       <span className="games-player-tooltip" aria-hidden="true">
@@ -176,6 +176,8 @@ export function GameTrailer({
     [chrome, setChrome] = useState(true),
     [bezel, setBezel] = useState<{ id: number; icon: ReactNode; label?: string } | null>(null),
     [hover, setHover] = useState<{ at: number; time: number } | null>(null);
+  // A previous player (or F11) may still be restoring the window when this one appears.
+  const windowBusy = useSyncExternalStore(subscribeWindowTransition, isWindowTransitionPending);
   useEffect(() => {
     playbackHandler.current?.(playing);
   }, [playing]);
@@ -381,13 +383,7 @@ export function GameTrailer({
   const releaseWindow = useCallback(() => {
     if (!ownsWindowFullscreen.current) return;
     ownsWindowFullscreen.current = false;
-    const pending = windowTransition.current ?? Promise.resolve();
-    void trackWindowTransition(
-      pending.then(
-        () => exitWindowFullscreen(),
-        () => exitWindowFullscreen(),
-      ),
-    );
+    void trackWindowTransition(afterWindowTransition().then(() => exitWindowFullscreen()));
   }, []);
   useEffect(() => {
     unmounted.current = false;
@@ -502,7 +498,7 @@ export function GameTrailer({
     }
     const node = root.current;
     // A window change is still running; a second one would capture its half-applied bounds.
-    if (!node || windowTransition.current) return;
+    if (!node || isWindowTransitionPending()) return;
     // The window goes fullscreen first; requesting the element first leaves the window at its
     // maximized size, so the video shows bars and the taskbar gap. Browsers only need the element.
     // In "maximized" mode the app's fullscreen only maximizes the window, and undoing it would
@@ -849,7 +845,14 @@ export function GameTrailer({
           </div>
           {controls}
           <Control
-            label={t(fullscreen ? "games.player.exitFullscreen" : "games.player.fullscreen")}
+            label={t(
+              fullscreen
+                ? "games.player.exitFullscreen"
+                : windowBusy
+                  ? "games.player.fullscreenBusy"
+                  : "games.player.fullscreen",
+            )}
+            busy={!fullscreen && windowBusy}
             onClick={toggleFullscreen}
           >
             {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}

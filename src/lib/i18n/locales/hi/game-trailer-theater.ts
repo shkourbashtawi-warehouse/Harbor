@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "ट्रेलर",
   "games.player.watchTrailers": "ट्रेलर देखें · {count}",
   "games.player.nextTrailer": "अगला ट्रेलर (Shift+N)",
+  "games.player.fullscreenBusy": "विंडो का आकार बदला जा रहा है…",
   "games.player.loadingNamed": "{name} लोड हो रहा है",
   "games.player.nextSource": "अगला सोर्स आज़माएँ",
   "games.player.clip": "छोटा प्रीव्यू",

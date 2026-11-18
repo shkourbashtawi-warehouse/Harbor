@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "Fragmanlar",
   "games.player.watchTrailers": "Fragmanları izle · {count}",
   "games.player.nextTrailer": "Sonraki fragman (Shift+N)",
+  "games.player.fullscreenBusy": "Pencere yeniden boyutlandırılıyor…",
   "games.player.loadingNamed": "{name} yükleniyor",
   "games.player.nextSource": "Sonraki kaynağı dene",
   "games.player.clip": "Kısa önizleme",

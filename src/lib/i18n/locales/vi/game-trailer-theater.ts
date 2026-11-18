@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "Đoạn giới thiệu",
   "games.player.watchTrailers": "Xem đoạn giới thiệu · {count}",
   "games.player.nextTrailer": "Đoạn giới thiệu tiếp theo (Shift+N)",
+  "games.player.fullscreenBusy": "Đang thay đổi kích thước cửa sổ…",
   "games.player.loadingNamed": "Đang tải {name}",
   "games.player.nextSource": "Thử nguồn tiếp theo",
   "games.player.clip": "Xem trước ngắn",

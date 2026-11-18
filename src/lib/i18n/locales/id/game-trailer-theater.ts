@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "Trailer",
   "games.player.watchTrailers": "Tonton trailer · {count}",
   "games.player.nextTrailer": "Trailer berikutnya (Shift+N)",
+  "games.player.fullscreenBusy": "Mengubah ukuran jendela…",
   "games.player.loadingNamed": "Memuat {name}",
   "games.player.nextSource": "Coba sumber berikutnya",
   "games.player.clip": "Pratinjau singkat",

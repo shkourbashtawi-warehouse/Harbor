@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "المقاطع الدعائية",
   "games.player.watchTrailers": "شاهد المقاطع الدعائية · {count}",
   "games.player.nextTrailer": "المقطع الدعائي التالي (Shift+N)",
+  "games.player.fullscreenBusy": "جارٍ تغيير حجم النافذة…",
   "games.player.loadingNamed": "جارٍ تحميل {name}",
   "games.player.nextSource": "جرّب المصدر التالي",
   "games.player.clip": "معاينة قصيرة",

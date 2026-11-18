@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "예고편",
   "games.player.watchTrailers": "예고편 보기 · {count}",
   "games.player.nextTrailer": "다음 예고편 (Shift+N)",
+  "games.player.fullscreenBusy": "창 크기를 조정하는 중…",
   "games.player.loadingNamed": "{name} 불러오는 중",
   "games.player.nextSource": "다음 소스 시도",
   "games.player.clip": "짧은 미리보기",

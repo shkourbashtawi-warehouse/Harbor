@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "Трейлеры",
   "games.player.watchTrailers": "Смотреть трейлеры · {count}",
   "games.player.nextTrailer": "Следующий трейлер (Shift+N)",
+  "games.player.fullscreenBusy": "Изменение размера окна…",
   "games.player.loadingNamed": "Загрузка: {name}",
   "games.player.nextSource": "Попробовать другой источник",
   "games.player.clip": "Короткое превью",

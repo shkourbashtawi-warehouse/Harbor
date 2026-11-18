@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "Zwiastuny",
   "games.player.watchTrailers": "Obejrzyj zwiastuny · {count}",
   "games.player.nextTrailer": "Następny zwiastun (Shift+N)",
+  "games.player.fullscreenBusy": "Zmienianie rozmiaru okna…",
   "games.player.loadingNamed": "Wczytywanie: {name}",
   "games.player.nextSource": "Spróbuj następnego źródła",
   "games.player.clip": "Krótki podgląd",

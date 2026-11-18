@@ -8,6 +8,7 @@ export default {
   "games.player.seek": "Seek trailer",
   "games.player.fullscreen": "Full screen",
   "games.player.exitFullscreen": "Exit full screen",
+  "games.player.fullscreenBusy": "Resizing the window…",
   "games.player.buffering": "Loading trailer",
   "games.player.error": "This trailer couldn't play.",
   "games.player.retry": "Try trailer again",

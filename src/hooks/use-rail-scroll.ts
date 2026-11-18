@@ -24,7 +24,10 @@ export function useRailScroll() {
     const measure = () => {
       const position = offset(),
         limit = max();
-      setEdges({ start: position > 1, end: position < limit - 1 });
+      const start = position > 1,
+        end = position < limit - 1;
+      // Runs on every scroll frame; keep the same state object so React skips the render.
+      setEdges((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
     };
     const animate = () => {
       if (target.current === null) return;

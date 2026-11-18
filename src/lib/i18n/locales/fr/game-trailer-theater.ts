@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "Bandes-annonces",
   "games.player.watchTrailers": "Voir les bandes-annonces · {count}",
   "games.player.nextTrailer": "Bande-annonce suivante (Maj+N)",
+  "games.player.fullscreenBusy": "Redimensionnement de la fenêtre…",
   "games.player.loadingNamed": "Chargement de {name}",
   "games.player.nextSource": "Essayer la source suivante",
   "games.player.clip": "Aperçu court",

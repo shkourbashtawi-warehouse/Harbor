@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "予告編",
   "games.player.watchTrailers": "予告編を見る · {count}",
   "games.player.nextTrailer": "次の予告編 (Shift+N)",
+  "games.player.fullscreenBusy": "ウィンドウのサイズを変更しています…",
   "games.player.loadingNamed": "{name} を読み込み中",
   "games.player.nextSource": "次のソースを試す",
   "games.player.clip": "短いプレビュー",

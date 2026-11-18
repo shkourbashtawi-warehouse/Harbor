@@ -47,6 +47,10 @@
 .games-player-control-row button:focus-visible {
   background: #ffffff1a;
 }
+.games-player-control-row button[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: progress;
+}
 .games-player-time {
   font-size: 12px;
   font-variant-numeric: tabular-nums;

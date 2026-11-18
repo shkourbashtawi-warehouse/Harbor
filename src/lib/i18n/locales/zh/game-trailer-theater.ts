@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "预告片",
   "games.player.watchTrailers": "观看预告片 · {count}",
   "games.player.nextTrailer": "下一个预告片 (Shift+N)",
+  "games.player.fullscreenBusy": "正在调整窗口大小…",
   "games.player.loadingNamed": "正在加载 {name}",
   "games.player.nextSource": "尝试下一个来源",
   "games.player.clip": "简短预览",

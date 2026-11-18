@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "Trailer",
   "games.player.watchTrailers": "Guarda i trailer · {count}",
   "games.player.nextTrailer": "Trailer successivo (Maiusc+N)",
+  "games.player.fullscreenBusy": "Ridimensionamento della finestra…",
   "games.player.loadingNamed": "Caricamento di {name}",
   "games.player.nextSource": "Prova la fonte successiva",
   "games.player.clip": "Anteprima breve",

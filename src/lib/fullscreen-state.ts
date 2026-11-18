@@ -14,6 +14,11 @@ let marathonReenter = false;
 let borderlessActive = false;
 let borderlessSaved: BorderlessSaved | null = null;
 const subs = new Set<() => void>();
+// The native window change in flight, entry or restore. Borderless mode resizes the window
+// asynchronously and clears the fullscreen flag before the window is back, so a change that
+// starts in between saves half-applied bounds and a later exit restores the wrong ones.
+let windowTransition: Promise<void> | null = null;
+const transitionSubs = new Set<() => void>();
 
 export function suppressFullscreenExitOnce(): void {
   suppressNextExit = true;
@@ -64,6 +69,45 @@ export function setWindowFullscreen(v: boolean): void {
   if (windowFullscreen === v) return;
   windowFullscreen = v;
   emit();
+}
+
+function emitTransition(): void {
+  for (const fn of transitionSubs) fn();
+}
+
+/** Registers a window change so later changes wait for it to settle. */
+export function trackWindowTransition(change: Promise<void>): Promise<void> {
+  const idle = windowTransition === null;
+  windowTransition = change;
+  if (idle) emitTransition();
+  void change
+    .catch(() => {})
+    .finally(() => {
+      if (windowTransition !== change) return;
+      windowTransition = null;
+      emitTransition();
+    });
+  return change;
+}
+
+/**
+ * Resolves once the change in flight now settles, whether it failed or not. Each tracked
+ * change waits on this before it starts, so the latest one covers every earlier one.
+ */
+export function afterWindowTransition(): Promise<void> {
+  const settled = () => {};
+  return windowTransition ? windowTransition.then(settled, settled) : Promise.resolve();
+}
+
+export function isWindowTransitionPending(): boolean {
+  return windowTransition !== null;
+}
+
+export function subscribeWindowTransition(fn: () => void): () => void {
+  transitionSubs.add(fn);
+  return () => {
+    transitionSubs.delete(fn);
+  };
 }
 
 export function normalizeFullscreenMode(value: string | null | undefined): FullscreenMode {
@@ -283,8 +327,13 @@ export async function exitWindowFullscreenOnPlayerClose(): Promise<void> {
 }
 
 export async function toggleWindowFullscreen(): Promise<void> {
-  if (windowFullscreen) await exitWindowFullscreen();
-  else await enterWindowFullscreen();
+  // Decide the direction only after any change in flight settles: mid-restore the flag
+  // already reads "not fullscreen" while the window still has its fullscreen bounds.
+  await trackWindowTransition(
+    afterWindowTransition().then(() =>
+      windowFullscreen ? exitWindowFullscreen() : enterWindowFullscreen(),
+    ),
+  );
 }
 
 async function osWindowFullscreen(): Promise<boolean> {

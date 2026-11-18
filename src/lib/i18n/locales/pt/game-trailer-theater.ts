@@ -11,6 +11,7 @@ export default {
   "games.player.allTrailers": "Trailers",
   "games.player.watchTrailers": "Ver trailers · {count}",
   "games.player.nextTrailer": "Próximo trailer (Shift+N)",
+  "games.player.fullscreenBusy": "Redimensionando a janela…",
   "games.player.loadingNamed": "Carregando {name}",
   "games.player.nextSource": "Tentar a próxima fonte",
   "games.player.clip": "Prévia curta",
