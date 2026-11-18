@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "جارٍ تحميل {name}",
   "games.player.nextSource": "جرّب المصدر التالي",
   "games.player.clip": "معاينة قصيرة",
-  "games.player.noTrailer": "تعذّر تشغيل أي مقطع دعائي لهذه اللعبة.",
+  "games.player.noTrailer": "تعذّر تشغيل أي مقطع دعائي لهذا العنوان.",
   "games.player.allSources": "الكل",
   "games.player.filterSources": "تصفية المقاطع الدعائية",
   "games.player.slowSource":

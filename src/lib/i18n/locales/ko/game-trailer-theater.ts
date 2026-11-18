@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "{name} 불러오는 중",
   "games.player.nextSource": "다음 소스 시도",
   "games.player.clip": "짧은 미리보기",
-  "games.player.noTrailer": "이 게임의 예고편을 재생할 수 없습니다.",
+  "games.player.noTrailer": "이 작품의 예고편을 재생할 수 없습니다.",
   "games.player.allSources": "전체",
   "games.player.filterSources": "예고편 필터",
   "games.player.slowSource":

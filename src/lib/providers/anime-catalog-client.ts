@@ -3,6 +3,11 @@
 export const ANIME_CATALOG_BASE = "https://api.tenrai.org/v1";
 export const ANIME_CATALOG_FALLBACK = "https://jikanfortheweebs.midnightignite.me/v4";
 
+function isPromoEntry(entry: unknown): boolean {
+  const trailer = (entry as { trailer?: unknown } | null)?.trailer;
+  return typeof trailer === "object" && trailer !== null;
+}
+
 export function catalogRetryDelay(value: string | null, now: number): number {
   const seconds = value === null ? NaN : Number(value);
   const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(value ?? "") - now;
@@ -90,15 +95,20 @@ export function createAnimeCatalogClient(
           // An anime's videos come back as one object of promo, episode and music lists.
           const videos = /^\/anime\/\d+\/videos(?:\?|$)/.test(path);
           const data = payload.data as object;
+          const promo = (data as { promo?: unknown }).promo;
           if (
             videos
               ? Array.isArray(data) ||
                 typeof data !== "object" ||
-                !Array.isArray((data as { promo?: unknown }).promo)
+                !Array.isArray(promo) ||
+                // Entries present but none usable: let the other provider answer instead.
+                (promo.length > 0 && !promo.some(isPromoEntry))
               : detail
                 ? Array.isArray(data) || typeof data !== "object" || !("mal_id" in data)
                 : !Array.isArray(data)
           ) {
+            // One title's odd videos body says nothing about the provider's other endpoints.
+            if (videos) retry = 0;
             throw new Error("Invalid anime catalog data");
           }
           provider.unavailableUntil = 0;

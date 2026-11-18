@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "Загрузка: {name}",
   "games.player.nextSource": "Попробовать другой источник",
   "games.player.clip": "Короткое превью",
-  "games.player.noTrailer": "Не удалось воспроизвести ни один трейлер этой игры.",
+  "games.player.noTrailer": "Не удалось воспроизвести ни один трейлер этого тайтла.",
   "games.player.allSources": "Все",
   "games.player.filterSources": "Фильтр трейлеров",
   "games.player.slowSource":

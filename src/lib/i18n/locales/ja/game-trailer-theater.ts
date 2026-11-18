@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "{name} を読み込み中",
   "games.player.nextSource": "次のソースを試す",
   "games.player.clip": "短いプレビュー",
-  "games.player.noTrailer": "このゲームの予告編を再生できませんでした。",
+  "games.player.noTrailer": "この作品の予告編を再生できませんでした。",
   "games.player.allSources": "すべて",
   "games.player.filterSources": "予告編を絞り込む",
   "games.player.slowSource":

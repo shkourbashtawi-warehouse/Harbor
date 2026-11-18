@@ -87,6 +87,7 @@ export function GameTrailer({
   onNext,
   onVideo,
   onPlaybackChange,
+  onMutedChoice,
 }: {
   url: string;
   poster: string;
@@ -115,6 +116,8 @@ export function GameTrailer({
   /** Hands the media element to a surface that mirrors it, such as an ambient glow. */
   onVideo?: (element: HTMLVideoElement | null) => void;
   onPlaybackChange?: (playing: boolean) => void;
+  /** Reports the viewer's own mute choices, so a replacement player can keep them. */
+  onMutedChoice?: (muted: boolean) => void;
 }) {
   const t = useT(),
     root = useRef<HTMLDivElement>(null),
@@ -169,7 +172,8 @@ export function GameTrailer({
       (pastTop || manualPlay || fullscreen) &&
       wantsPlay &&
       !fault,
-    eligibleRef = useRef(eligible);
+    eligibleRef = useRef(eligible),
+    playAttempt = useRef(0);
   eligibleRef.current = eligible;
   const streaming = useRef<{
       startLoad: (position?: number) => void;
@@ -298,20 +302,26 @@ export function GameTrailer({
   useEffect(() => {
     const el = video.current;
     if (!el || !ready) return;
+    // Each run supersedes the last; a late answer to an older play() must not act on this one.
+    const attempt = ++playAttempt.current;
+    const current = () => playAttempt.current === attempt;
     if (eligible) {
       streaming.current?.startLoad(-1);
       const started = () => {
-        if (!eligibleRef.current) el.pause();
+        if (current() && !eligibleRef.current) el.pause();
       };
       const blocked = () => {
-        if (eligibleRef.current) {
+        if (current() && eligibleRef.current) {
           setWantsPlay(false);
           setBuffering(false);
           setChrome(true);
         }
       };
-      void el.play().then(started, () => {
-        if (!eligibleRef.current || el.muted) return blocked();
+      void el.play().then(started, (error: unknown) => {
+        if (!current()) return;
+        // Only a refusal of sound is worth a muted retry; an abort means a newer request won.
+        if (!eligibleRef.current || el.muted || (error as Error)?.name !== "NotAllowedError")
+          return blocked();
         // Sound can be refused without a recent gesture; muted playback is still allowed.
         el.muted = true;
         setMuted(true);
@@ -351,21 +361,32 @@ export function GameTrailer({
   // Element fullscreen only fills the webview. The app's own window fullscreen (which honours
   // the user's fullscreen mode) runs with it, and is undone only if this player started it.
   const ownsWindowFullscreen = useRef(false),
-    windowEntry = useRef<Promise<void> | null>(null),
+    // The window change in flight, entry or restore. Borderless mode resizes the window
+    // asynchronously, and a second change started meanwhile would save the wrong bounds.
+    windowTransition = useRef<Promise<void> | null>(null),
     unmounted = useRef(false);
-  // Restores the window this player took over. An entry still in flight (borderless mode
-  // resizes the window asynchronously) settles first, so the exit undoes what it applied.
+  const track = useCallback((change: Promise<void>) => {
+    windowTransition.current = change;
+    void change
+      .catch(() => {})
+      .finally(() => {
+        if (windowTransition.current === change) windowTransition.current = null;
+      });
+    return change;
+  }, []);
+  // Restores the window this player took over, after any entry still in flight settles, so
+  // the exit undoes what that entry applied.
   const releaseWindow = useCallback(() => {
     if (!ownsWindowFullscreen.current) return;
     ownsWindowFullscreen.current = false;
-    const pending = windowEntry.current;
-    if (pending)
-      void pending.then(
+    const pending = windowTransition.current ?? Promise.resolve();
+    void track(
+      pending.then(
         () => exitWindowFullscreen(),
         () => exitWindowFullscreen(),
-      );
-    else void exitWindowFullscreen();
-  }, []);
+      ),
+    );
+  }, [track]);
   useEffect(() => {
     unmounted.current = false;
     const change = () => {
@@ -380,27 +401,36 @@ export function GameTrailer({
       releaseWindow();
     };
   }, [releaseWindow]);
-  const claimSound = () => {
+  // `stillAudible` guards the deferred music pause: the trailer may have stopped or gone
+  // quiet by the time the player module loads.
+  const claimSound = (stillAudible: () => boolean = () => true) => {
     for (const other of document.querySelectorAll<HTMLMediaElement>(
       ".games-view audio,.games-view video",
     ))
       if (other !== video.current && !other.paused) other.pause();
     void import("@/lib/music/player")
       .then(({ getMusicState, toggleMusicPlayback }) => {
-        if (getMusicState().phase === "playing") toggleMusicPlayback();
+        if (stillAudible() && getMusicState().phase === "playing") toggleMusicPlayback();
       })
       .catch(() => {});
   };
   const claimSoundRef = useRef(claimSound);
   claimSoundRef.current = claimSound;
+  const audible = playing && !muted && volume > 0;
   useEffect(() => {
-    if (playing && !muted) claimSoundRef.current();
-  }, [playing, muted]);
+    if (!audible) return;
+    let current = true;
+    claimSoundRef.current(() => current);
+    return () => {
+      current = false;
+    };
+  }, [audible]);
   const changeVolume = (value: number) => {
     const next = clamp(value);
     setVolume(next);
     volumeRef.current = next;
     setMuted(next === 0);
+    onMutedChoice?.(next === 0);
     if (next > 0) claimSound();
     try {
       localStorage.setItem(VOLUME_KEY, String(next));
@@ -429,7 +459,11 @@ export function GameTrailer({
       if (volume === 0) setVolume(0.35);
       claimSound();
       setMuted(false);
-    } else setMuted(true);
+      onMutedChoice?.(false);
+    } else {
+      setMuted(true);
+      onMutedChoice?.(true);
+    }
     reveal();
   };
   const togglePlayback = () => {
@@ -462,7 +496,8 @@ export function GameTrailer({
       return;
     }
     const node = root.current;
-    if (!node) return;
+    // A window change is still running; a second one would capture its half-applied bounds.
+    if (!node || windowTransition.current) return;
     // The window goes fullscreen first; requesting the element first leaves the window at its
     // maximized size, so the video shows bars and the taskbar gap. Browsers only need the element.
     // In "maximized" mode the app's fullscreen only maximizes the window, and undoing it would
@@ -472,13 +507,7 @@ export function GameTrailer({
     const enter = async () => {
       if (native) {
         ownsWindowFullscreen.current = true;
-        const entry = enterWindowFullscreen();
-        windowEntry.current = entry;
-        try {
-          await entry;
-        } finally {
-          if (windowEntry.current === entry) windowEntry.current = null;
-        }
+        await track(enterWindowFullscreen());
       }
       // Closed while the window was changing: the release already queued its restore.
       if (unmounted.current) return;

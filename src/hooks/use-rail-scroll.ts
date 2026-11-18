@@ -62,6 +62,11 @@ export function useRailScroll() {
     };
     const move = (event: PointerEvent) => {
       if (!drag || event.pointerId !== drag.id) return;
+      // Released outside before the rail captured the pointer: its pointerup never came here.
+      if (!drag.moved && (event.buttons & 1) === 0) {
+        drag = null;
+        return;
+      }
       const distance = event.clientX - drag.x;
       if (!drag.moved) {
         if (Math.abs(distance) < DRAG_THRESHOLD) return;
@@ -95,6 +100,9 @@ export function useRailScroll() {
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(node);
+    // Swapping the cards (a filter) can change the overflow without resizing the rail itself.
+    const cards = new MutationObserver(measure);
+    cards.observe(node, { childList: true });
     node.addEventListener("scroll", measure, { passive: true });
     node.addEventListener("wheel", wheel, { passive: false });
     node.addEventListener("pointerdown", down);
@@ -104,6 +112,7 @@ export function useRailScroll() {
     return () => {
       cancelAnimationFrame(frame.current);
       observer.disconnect();
+      cards.disconnect();
       node.removeEventListener("scroll", measure);
       node.removeEventListener("wheel", wheel);
       node.removeEventListener("pointerdown", down);

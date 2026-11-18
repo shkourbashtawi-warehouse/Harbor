@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "正在加载 {name}",
   "games.player.nextSource": "尝试下一个来源",
   "games.player.clip": "简短预览",
-  "games.player.noTrailer": "无法播放此游戏的任何预告片。",
+  "games.player.noTrailer": "无法播放此作品的任何预告片。",
   "games.player.allSources": "全部",
   "games.player.filterSources": "筛选预告片",
   "games.player.slowSource": "比平时更久。YouTube 预告片首次加载可能需要一点时间。",

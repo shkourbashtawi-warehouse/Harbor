@@ -497,6 +497,11 @@ export function loadSteamImportSummary(steamId: number, signal: AbortSignal): Pr
     signal,
   );
 }
+/** Drops a resolved clip URL that failed to play, so the next load asks Steam again. */
+export function forgetGameMicrotrailer(steamId: number): void {
+  cache.delete(`microtrailer:${steamId}`);
+}
+
 export function loadGameMicrotrailer(steamId: number): Promise<string> {
   if (!Number.isSafeInteger(steamId) || steamId <= 0) return Promise.resolve("");
   return cached(`microtrailer:${steamId}`, async () => {

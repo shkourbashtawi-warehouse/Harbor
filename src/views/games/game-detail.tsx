@@ -393,7 +393,8 @@ export function GameDetailPage({
   const heroTrailers = heroTrailerSources({
     trailers: detail?.trailers ?? [],
     videos: atlas?.videos ?? [],
-    steamId,
+    // A reviewed match is another game: only its own Steam link may supply the clip fallback.
+    steamId: reviewedMetadata ? steamLinkId : steamId,
     youtube: "__TAURI_INTERNALS__" in window,
   });
   const trailerCount = heroTrailers.filter((source) => source.kind !== "clip").length;
@@ -817,11 +818,7 @@ export function GameDetailPage({
                 active={active}
                 suspended={backups || achievementsOpen || pricesOpen || trailerOpen}
                 trailerCount={trailerCount}
-                onWatchTrailers={
-                  trailerCount > 0
-                    ? () => openTrailer(document.activeElement as HTMLElement)
-                    : undefined
-                }
+                onWatchTrailers={trailerCount > 0 ? openTrailer : undefined}
               />
               <section className="games-about" aria-label={t("games.about")}>
                 <GamePublisherAbout

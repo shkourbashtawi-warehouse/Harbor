@@ -34,5 +34,5 @@ export default {
   "games.player.slowSource":
     "Taking longer than usual. YouTube trailers can take a moment the first time.",
   "games.player.clip": "Short preview",
-  "games.player.noTrailer": "No trailer could play for this game.",
+  "games.player.noTrailer": "No trailer could play for this title.",
 } satisfies Record<string, string>;

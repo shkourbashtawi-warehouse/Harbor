@@ -581,7 +581,8 @@
 }
 /* Timelines run left to right in every language, as on YouTube; the painted bar and the
    range thumb would otherwise move in opposite directions in RTL. */
-.is-cinema .games-player-seek {
+.is-cinema .games-player-seek,
+.is-cinema .games-player-volume input {
   direction: ltr;
 }
 .is-cinema .games-player-seek > span {

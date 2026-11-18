@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "Memuat {name}",
   "games.player.nextSource": "Coba sumber berikutnya",
   "games.player.clip": "Pratinjau singkat",
-  "games.player.noTrailer": "Tidak ada trailer yang bisa diputar untuk game ini.",
+  "games.player.noTrailer": "Tidak ada trailer yang bisa diputar untuk judul ini.",
   "games.player.allSources": "Semua",
   "games.player.filterSources": "Saring trailer",
   "games.player.slowSource":

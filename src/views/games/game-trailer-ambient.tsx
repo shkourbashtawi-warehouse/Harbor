@@ -86,6 +86,9 @@ export function GameTrailerAmbient({ video }: { video: HTMLVideoElement | null }
     schedule();
     return () => {
       stopped = true;
+      // The next video starts dark rather than under the previous trailer's light.
+      output.clearRect(0, 0, WIDTH, HEIGHT);
+      setLit(false);
       if (handle) target.cancelVideoFrameCallback?.(handle);
       clearTimeout(timer);
       target.removeEventListener("loadeddata", jump);

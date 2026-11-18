@@ -169,7 +169,13 @@ function seasonImages(
   return out.size > 0 ? Object.fromEntries(out) : undefined;
 }
 
-function toDetail(m: CinemetaMeta, kind: "movie" | "tv", related: Meta[]): TmdbDetail {
+function toDetail(
+  m: CinemetaMeta,
+  kind: "movie" | "tv",
+  related: Meta[],
+  /** The catalog the trailers came from, when it is known. */
+  trailerSource?: string,
+): TmdbDetail {
   const seasons = addonSeasons(m);
   const stampedTmdbId = Number(m._tmdbId);
   const stampedTvdbId = Number(m._tvdbId);
@@ -247,7 +253,7 @@ function toDetail(m: CinemetaMeta, kind: "movie" | "tv", related: Meta[]): TmdbD
     trailerYtId,
     trailerCandidates,
     trailerVideos,
-    trailerSource: "Cinemeta",
+    trailerSource,
     extraVideos: [],
     gallery: { backdrops: [], posters: [], logos: [] },
     cast,
@@ -298,7 +304,10 @@ export async function cinemetaDetails(meta: Meta): Promise<TmdbDetail | null> {
       meta.type === "series" ? "series" : "movie",
       meta.id,
     );
-    return full ? toDetail(full, meta.type === "series" ? "tv" : "movie", []) : null;
+    // Add-on metadata names its add-on; anything else stays unattributed.
+    return full
+      ? toDetail(full, meta.type === "series" ? "tv" : "movie", [], full.addonOrigin?.name)
+      : null;
   }
   const imdbId = extractImdbId(meta.id);
   if (!imdbId) return null;
@@ -325,7 +334,7 @@ export async function cinemetaDetails(meta: Meta): Promise<TmdbDetail | null> {
       ? await relatedFetcher(primaryGenre).catch(() => [] as Meta[])
       : [];
     const filtered = related.filter((r) => r.id !== imdbId).slice(0, 30);
-    const out = toDetail(m, kind, filtered);
+    const out = toDetail(m, kind, filtered, "Cinemeta");
     detailCache.set(cacheKey, { v: out, t: Date.now() });
     return out;
   } catch {

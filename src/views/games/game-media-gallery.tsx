@@ -25,7 +25,8 @@ export function GameMediaGallery({
   active: boolean;
   suspended?: boolean;
   /** When the page offers the trailer theater, videos live there and the gallery stays stills-only. */
-  onWatchTrailers?: () => void;
+  /** Receives the button, so closing the theater can return focus to it. */
+  onWatchTrailers?: (opener: HTMLElement) => void;
   trailerCount?: number;
 }) {
   const t = useT(),
@@ -126,7 +127,11 @@ export function GameMediaGallery({
           </button>
         )}
         {onWatchTrailers && trailerCount > 0 && (
-          <button type="button" className="games-gallery-trailers" onClick={onWatchTrailers}>
+          <button
+            type="button"
+            className="games-gallery-trailers"
+            onClick={(event) => onWatchTrailers(event.currentTarget)}
+          >
             <span className="games-gallery-trailers-icon">
               <Play size={14} />
             </span>

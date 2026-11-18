@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "{name} wird geladen",
   "games.player.nextSource": "Nächste Quelle versuchen",
   "games.player.clip": "Kurze Vorschau",
-  "games.player.noTrailer": "Für dieses Spiel konnte kein Trailer abgespielt werden.",
+  "games.player.noTrailer": "Für diesen Titel konnte kein Trailer abgespielt werden.",
   "games.player.allSources": "Alle",
   "games.player.filterSources": "Trailer filtern",
   "games.player.slowSource":

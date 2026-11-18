@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "Cargando {name}",
   "games.player.nextSource": "Probar la siguiente fuente",
   "games.player.clip": "Vista previa corta",
-  "games.player.noTrailer": "No se pudo reproducir ningún tráiler de este juego.",
+  "games.player.noTrailer": "No se pudo reproducir ningún tráiler de este título.",
   "games.player.allSources": "Todos",
   "games.player.filterSources": "Filtrar tráileres",
   "games.player.slowSource":

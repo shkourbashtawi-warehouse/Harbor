@@ -5,8 +5,9 @@ import { malPromosFromResponse } from "../src/lib/mal-trailers.ts";
 
 test("title trailers keep listing order, the first catalog and the first name", () => {
   const sources = titleTrailerSources([
-    { via: "TMDB", videos: [{ id: "aaaaaaaaaaa" }, { id: "bbbbbbbbbbb", name: "Teaser" }] },
+    { via: "TMDB", videos: [{ id: " aaaaaaaaaaa " }, { id: "bbbbbbbbbbb", name: "Teaser" }] },
     { via: "Cinemeta", videos: [{ id: "aaaaaaaaaaa", name: "Official Trailer" }] },
+    { via: "Kitsu", videos: [{ id: "aaaaaaaaaaa", name: "Later name" }] },
     { via: "MyAnimeList", videos: [{ id: "ccccccccccc", name: " PV 1 " }, { id: "short" }] },
     { videos: [{ id: undefined }, { id: "  " }] },
   ]);
@@ -27,6 +28,15 @@ test("title trailers keep listing order, the first catalog and the first name", 
       via: "MyAnimeList",
     },
   ]);
+});
+
+test("MyAnimeList promos skip malformed entries and keep the usable ones", () => {
+  assert.deepEqual(
+    malPromosFromResponse({
+      promo: [null, { title: "PV 2", trailer: { youtube_id: "ddddddddddd" } }],
+    }),
+    [{ id: "ddddddddddd", name: "PV 2" }],
+  );
 });
 
 test("MyAnimeList promos read the id from the embed URL when it is missing", () => {

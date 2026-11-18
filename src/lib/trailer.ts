@@ -71,51 +71,12 @@ export function fetchTrailer(
   if (!isTauri || !videoId) return Promise.resolve(null);
   const key = cacheKey(videoId, quality);
   if (!download) {
-    const hit = streamCache.get(key);
-    if (hit && hit.expires > Date.now()) return hit.request;
-    const request = invoke<{
-      url: string;
-      audio_url?: string | null;
-      headers: Record<string, string>;
-      transcode?: boolean;
-      duration?: number;
-    }>("resolve_youtube_stream", { videoId, quality })
-      .then(async (stream): Promise<TrailerInfo> => {
-        const expiry = [stream.url, stream.audio_url]
-          .filter((url): url is string => !!url)
-          .map((url) => Number(new URL(url).searchParams.get("expire")))
-          .filter((value) => Number.isFinite(value) && value > 0)
-          .reduce((earliest, value) => Math.min(earliest, value), Number.POSITIVE_INFINITY);
-        const cached = streamCache.get(key);
-        if (cached) {
-          const now = Date.now();
-          const ttl = now + STREAM_CACHE_TTL_MS;
-          cached.expires = Number.isFinite(expiry)
-            ? Math.max(now + 30_000, Math.min(ttl, expiry * 1000 - 30_000))
-            : ttl;
-        }
-        const options: { transcode?: boolean; fragmentedMp4: boolean; audioUrl?: string } = {
-          transcode: stream.transcode,
-          fragmentedMp4: true,
-        };
-        if (stream.audio_url) options.audioUrl = stream.audio_url;
-        const proxy = await registerStreamProxy(stream.url, stream.headers, options);
-        return {
-          file_path: "",
-          stream_url: proxy.url,
-          quality,
-          duration_seconds: stream.duration ?? 0,
-          title: "",
-          size_bytes: 0,
-        };
-      })
-      .catch(() => {
-        streamCache.delete(key);
-        return downloadFallback ? fetchTrailer(videoId, quality, true) : null;
-      });
-    streamCache.set(key, { expires: Date.now() + STREAM_CACHE_TTL_MS, request });
-    while (streamCache.size > CACHE_MAX) streamCache.delete(streamCache.keys().next().value!);
-    return request;
+    // The shared entry only ever resolves the stream; each caller applies its own download
+    // fallback, so playback that joins a stream-only warmup still falls back.
+    const shared = resolveStream(videoId, quality, key);
+    return downloadFallback
+      ? shared.then((info) => info ?? fetchTrailer(videoId, quality, true))
+      : shared;
   }
   const hit = cache.get(key);
   if (hit) {
@@ -129,7 +90,7 @@ export function fetchTrailer(
       return null;
     },
   );
-  const p = new Promise<TrailerInfo | null>((resolve) => {
+  const p: Promise<TrailerInfo | null> = new Promise<TrailerInfo | null>((resolve) => {
     const timeout = setTimeout(() => {
       console.error("[harbor::trailer] fetch timed out", {
         videoId,
@@ -143,7 +104,8 @@ export function fetchTrailer(
       resolve(result);
     });
   }).then((result) => {
-    if (result === null) cache.delete(key);
+    // Only this request's own entry: a retry may already have replaced it.
+    if (result === null && cache.get(key) === p) cache.delete(key);
     return result;
   });
   cache.set(key, p);
@@ -153,6 +115,59 @@ export function fetchTrailer(
     cache.delete(first);
   }
   return p;
+}
+
+function resolveStream(
+  videoId: string,
+  quality: Quality,
+  key: string,
+): Promise<TrailerInfo | null> {
+  const hit = streamCache.get(key);
+  if (hit && hit.expires > Date.now()) return hit.request;
+  const request = invoke<{
+    url: string;
+    audio_url?: string | null;
+    headers: Record<string, string>;
+    transcode?: boolean;
+    duration?: number;
+  }>("resolve_youtube_stream", { videoId, quality })
+    .then(async (stream): Promise<TrailerInfo> => {
+      const expiry = [stream.url, stream.audio_url]
+        .filter((url): url is string => !!url)
+        .map((url) => Number(new URL(url).searchParams.get("expire")))
+        .filter((value) => Number.isFinite(value) && value > 0)
+        .reduce((earliest, value) => Math.min(earliest, value), Number.POSITIVE_INFINITY);
+      const cached = streamCache.get(key);
+      if (cached === entry) {
+        const now = Date.now();
+        const ttl = now + STREAM_CACHE_TTL_MS;
+        cached.expires = Number.isFinite(expiry)
+          ? Math.max(now + 30_000, Math.min(ttl, expiry * 1000 - 30_000))
+          : ttl;
+      }
+      const options: { transcode?: boolean; fragmentedMp4: boolean; audioUrl?: string } = {
+        transcode: stream.transcode,
+        fragmentedMp4: true,
+      };
+      if (stream.audio_url) options.audioUrl = stream.audio_url;
+      const proxy = await registerStreamProxy(stream.url, stream.headers, options);
+      return {
+        file_path: "",
+        stream_url: proxy.url,
+        quality,
+        duration_seconds: stream.duration ?? 0,
+        title: "",
+        size_bytes: 0,
+      };
+    })
+    .catch((): null => {
+      if (streamCache.get(key) === entry) streamCache.delete(key);
+      return null;
+    });
+  const entry = { expires: Date.now() + STREAM_CACHE_TTL_MS, request };
+  streamCache.set(key, entry);
+  while (streamCache.size > CACHE_MAX) streamCache.delete(streamCache.keys().next().value!);
+  return request;
 }
 
 export async function fetchFirstTrailer(
@@ -200,8 +215,6 @@ export function prefetchTrailerDownload(
   void fetchTrailer(videoId, quality, true);
 }
 
-/** Drops a resolved trailer so the next request resolves it afresh (for example after the
- *  stream it pointed at stopped working). */
 /** Drops every cached resolution of a video, whatever quality it was asked for. */
 export function forgetTrailerVideo(videoId: string): void {
   for (const map of [streamCache, cache] as Map<string, unknown>[]) {
@@ -209,6 +222,8 @@ export function forgetTrailerVideo(videoId: string): void {
   }
 }
 
+/** Drops a resolved trailer so the next request resolves it afresh (for example after the
+ *  stream it pointed at stopped working). */
 export function forgetTrailer(videoId: string, quality: Quality): void {
   const key = cacheKey(videoId, quality);
   streamCache.delete(key);

@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "Wczytywanie: {name}",
   "games.player.nextSource": "Spróbuj następnego źródła",
   "games.player.clip": "Krótki podgląd",
-  "games.player.noTrailer": "Nie udało się odtworzyć żadnego zwiastuna tej gry.",
+  "games.player.noTrailer": "Nie udało się odtworzyć żadnego zwiastuna tego tytułu.",
   "games.player.allSources": "Wszystkie",
   "games.player.filterSources": "Filtruj zwiastuny",
   "games.player.slowSource":

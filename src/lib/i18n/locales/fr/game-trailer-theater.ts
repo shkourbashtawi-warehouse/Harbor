@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "Chargement de {name}",
   "games.player.nextSource": "Essayer la source suivante",
   "games.player.clip": "Aperçu court",
-  "games.player.noTrailer": "Aucune bande-annonce n'a pu être lue pour ce jeu.",
+  "games.player.noTrailer": "Aucune bande-annonce n'a pu être lue pour ce titre.",
   "games.player.allSources": "Toutes",
   "games.player.filterSources": "Filtrer les bandes-annonces",
   "games.player.slowSource":

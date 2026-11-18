@@ -9,7 +9,7 @@ type PromoResponse = {
   promo?: Array<{
     title?: string;
     trailer?: { youtube_id?: string | null; embed_url?: string | null };
-  }>;
+  } | null>;
 };
 
 const EMBED_ID = /\/embed\/([\w-]{11})/;
@@ -21,8 +21,9 @@ const cache = new Map<number, Promise<MalPromo[]>>();
 export function malPromosFromResponse(data: PromoResponse | null | undefined): MalPromo[] {
   const promos: MalPromo[] = [];
   for (const item of data?.promo ?? []) {
-    const id = item.trailer?.youtube_id || item.trailer?.embed_url?.match(EMBED_ID)?.[1];
-    if (id) promos.push({ id, name: item.title?.trim() ?? "" });
+    // One malformed entry must not cost the usable ones.
+    const id = item?.trailer?.youtube_id || item?.trailer?.embed_url?.match(EMBED_ID)?.[1];
+    if (id) promos.push({ id, name: item?.title?.trim() ?? "" });
   }
   return promos;
 }

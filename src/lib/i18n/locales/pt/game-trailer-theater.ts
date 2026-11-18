@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "Carregando {name}",
   "games.player.nextSource": "Tentar a próxima fonte",
   "games.player.clip": "Prévia curta",
-  "games.player.noTrailer": "Nenhum trailer deste jogo pôde ser reproduzido.",
+  "games.player.noTrailer": "Nenhum trailer deste título pôde ser reproduzido.",
   "games.player.allSources": "Todos",
   "games.player.filterSources": "Filtrar trailers",
   "games.player.slowSource":

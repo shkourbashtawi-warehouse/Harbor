@@ -480,6 +480,15 @@
 .games-player-control-row .games-hero-trailer-menu.is-open > .games-player-tip > button {
   background: #ffffff1a;
 }
+/* An open settings menu keeps the controls up even after the pointer goes still. */
+.games-media-player:has(.games-hero-trailer-menu.is-open) .games-player-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+.games-media-player.is-cinema:has(.games-hero-trailer-menu.is-open),
+.games-media-player.is-cinema:has(.games-hero-trailer-menu.is-open) > video {
+  cursor: auto;
+}
 .games-hero-trailer-popover {
   position: absolute;
   bottom: calc(100% + 12px);

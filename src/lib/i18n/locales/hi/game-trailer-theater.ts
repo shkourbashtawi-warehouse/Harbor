@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "{name} लोड हो रहा है",
   "games.player.nextSource": "अगला सोर्स आज़माएँ",
   "games.player.clip": "छोटा प्रीव्यू",
-  "games.player.noTrailer": "इस गेम का कोई ट्रेलर नहीं चल सका।",
+  "games.player.noTrailer": "इस शीर्षक का कोई ट्रेलर नहीं चल सका।",
   "games.player.allSources": "सभी",
   "games.player.filterSources": "ट्रेलर फ़िल्टर करें",
   "games.player.slowSource":

@@ -613,9 +613,11 @@ export function DetailView({
     franchise,
   ]);
   const trailerCandidate = trailerCandidates[0] ?? null;
+  // In the desktop theater MyAnimeList can be the only catalog with a trailer, so it is asked
+  // up front when nothing else has one; otherwise it waits until the theater opens.
   const malTrailers = useMalTrailers(
     isAnime ? (animeCanonicalId ?? meta.id) : undefined,
-    trailerOpen,
+    trailerOpen || (NATIVE_TRAILERS && !trailerCandidate),
   );
   const trailerSources = useMemo(() => {
     // trailerCandidates already holds the playback order; the listings only name each video
@@ -645,6 +647,8 @@ export function DetailView({
           ],
         },
         {
+          // Related entries come from Kitsu's franchise listing.
+          via: "Kitsu",
           videos: franchise
             .flatMap((entry) => entry.meta.trailerStreams ?? [])
             .map((trailer) => ({ id: trailer.ytId, name: trailer.title })),
@@ -672,6 +676,8 @@ export function DetailView({
     franchise,
     malTrailers,
   ]);
+  // The theater plays any listed source; the browser overlay needs a first candidate.
+  const hasTrailer = NATIVE_TRAILERS ? trailerSources.length > 0 : !!trailerCandidate;
   const prefetchTrailer = useCallback(() => {
     if (trailerCandidate) {
       // Warms the stream the trailer theater requests first.
@@ -681,7 +687,7 @@ export function DetailView({
 
   useScrollUpTrailer(
     scrollRef,
-    settings.scrollUpTrailer && !!trailerCandidate && !trailerOpen,
+    settings.scrollUpTrailer && hasTrailer && !trailerOpen,
     useCallback(() => setTrailerOpen(true), []),
   );
   const actionRowRef = useRef<HTMLDivElement | null>(null);
@@ -2966,7 +2972,7 @@ export function DetailView({
                         poster: poster,
                       })
                     }
-                    hasTrailer={!!trailerCandidate}
+                    hasTrailer={hasTrailer}
                     onTrailer={() => setTrailerOpen(true)}
                     canDownload={meta.type === "movie"}
                     showWatched={settings.showWatchedButton && meta.type === "movie"}
@@ -3084,7 +3090,7 @@ export function DetailView({
                         </button>
                       </HoverTooltip>
                     )}
-                    {trailerCandidate && (
+                    {hasTrailer && (
                       <HoverTooltip label={t("Watch trailer")} align="center" className="shrink-0">
                         <button
                           type="button"
@@ -3581,7 +3587,7 @@ export function DetailView({
         )}
       </div>
       <BackToTop scrollRef={scrollRef} />
-      {trailerOpen && trailerCandidate && NATIVE_TRAILERS && (
+      {trailerOpen && hasTrailer && NATIVE_TRAILERS && (
         <GameTrailerTheater
           title={title}
           art={backdrop || meta.background || meta.poster || ""}

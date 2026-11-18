@@ -205,6 +205,28 @@ test("an anime's videos object passes validation and keeps the provider availabl
   ]);
 });
 
+test("a videos body without usable promos falls back without cooling the provider down", async () => {
+  const primary: string[] = [];
+  const fallback: string[] = [];
+  const client = createAnimeCatalogClient({
+    intervalMs: 0,
+    fallbackIntervalMs: 0,
+    fetch: async (url) => {
+      primary.push(String(url));
+      return String(url).endsWith("/videos") ? json({ promo: [null, 7] }) : json([{ mal_id: 1 }]);
+    },
+    fallbackFetch: async (url) => {
+      fallback.push(String(url));
+      return json({ promo: [{ title: "PV", trailer: { youtube_id: "abcdefghijk" } }] });
+    },
+  });
+  const videos = await client<Parameters<typeof malPromosFromResponse>[0]>("/anime/2/videos");
+  assert.deepEqual(malPromosFromResponse(videos.data), [{ id: "abcdefghijk", name: "PV" }]);
+  assert.deepEqual(fallback, [`${ANIME_CATALOG_FALLBACK}/anime/2/videos`]);
+  await client("/seasons/now");
+  assert.equal(primary.at(-1), `${ANIME_CATALOG_BASE}/seasons/now`);
+});
+
 test("catalog rejects unrelated destinations", async () => {
   const client = createAnimeCatalogClient({
     fetch: async () => {

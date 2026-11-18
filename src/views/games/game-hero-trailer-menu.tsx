@@ -150,8 +150,15 @@ export function GameHeroTrailerMenu({
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               const step = event.key === "ArrowDown" ? 1 : -1;
               items[(at + step + items.length) % items.length]?.focus();
-            } else if (event.key === forward && panel === "main" && at >= 0) items[at].click();
-            else if (event.key === backward && panel !== "main") setPanel("main");
+            } else if (event.key === forward && items[at]?.hasAttribute("aria-haspopup"))
+              // Only rows that open a submenu; Ambient keeps Enter and Space, like a checkbox.
+              items[at].click();
+            else if (event.key === "Tab") {
+              // Tab leaves the menu like any popup: close it and let focus move on.
+              setOpen(false);
+              onClose?.();
+              return;
+            } else if (event.key === backward && panel !== "main") setPanel("main");
             else if (event.key === "Home") items[0]?.focus();
             else if (event.key === "End") items[items.length - 1]?.focus();
             else return;
@@ -182,6 +189,7 @@ export function GameHeroTrailerMenu({
                   key={row.id}
                   type="button"
                   role="menuitem"
+                  aria-haspopup="menu"
                   className="games-trailer-menu-row"
                   onClick={() => setPanel(row.id)}
                 >

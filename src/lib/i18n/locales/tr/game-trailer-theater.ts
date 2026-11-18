@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "{name} yükleniyor",
   "games.player.nextSource": "Sonraki kaynağı dene",
   "games.player.clip": "Kısa önizleme",
-  "games.player.noTrailer": "Bu oyun için hiçbir fragman oynatılamadı.",
+  "games.player.noTrailer": "Bu yapım için hiçbir fragman oynatılamadı.",
   "games.player.allSources": "Tümü",
   "games.player.filterSources": "Fragmanları filtrele",
   "games.player.slowSource":

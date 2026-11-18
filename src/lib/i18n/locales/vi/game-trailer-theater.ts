@@ -14,7 +14,7 @@ export default {
   "games.player.loadingNamed": "Đang tải {name}",
   "games.player.nextSource": "Thử nguồn tiếp theo",
   "games.player.clip": "Xem trước ngắn",
-  "games.player.noTrailer": "Không phát được đoạn giới thiệu nào của trò chơi này.",
+  "games.player.noTrailer": "Không phát được đoạn giới thiệu nào của tựa này.",
   "games.player.allSources": "Tất cả",
   "games.player.filterSources": "Lọc đoạn giới thiệu",
   "games.player.slowSource":

@@ -44,6 +44,26 @@ test("hero trailer keeps the chosen source by key and skips failed ones", () => 
   assert.equal(activeTrailerSource(sources, null, new Set(sources.map((s) => s.key))), undefined);
 });
 
+test("hero trailer finds the exact chosen YouTube source after reordering", () => {
+  const two = heroTrailerSources({
+    trailers: [],
+    videos: [
+      { id: "dQw4w9WgXcQ", title: "Reveal" },
+      { id: "9bZkp7q19f0", title: "Gameplay" },
+    ],
+    youtube: true,
+  });
+  const reordered = [two[1], two[0]];
+  assert.equal(
+    activeTrailerSource(reordered, "youtube:dQw4w9WgXcQ", new Set())?.key,
+    "youtube:dQw4w9WgXcQ",
+  );
+  assert.equal(
+    activeTrailerSource(reordered, "youtube:dQw4w9WgXcQ", new Set(["youtube:dQw4w9WgXcQ"]))?.key,
+    "youtube:9bZkp7q19f0",
+  );
+});
+
 test("hero trailer quality picks the nearest offered rendition", () => {
   assert.equal(nearestTrailerHeight([360, 1080, 720, 480], 720), 720);
   assert.equal(nearestTrailerHeight([360, 1080, 720], 480), 360);

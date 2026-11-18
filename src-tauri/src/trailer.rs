@@ -676,14 +676,13 @@ pub async fn resolve_youtube_stream(
         let target_height = max_height.map_or(available_height, |cap| cap.min(available_height));
         if let Some(hls) = select_hls_video(formats, max_height) {
             let selected_height = rendition(hls).unwrap_or(0);
-            if selected_height >= target_height {
-                let audio_url = if format_has_audio(hls) {
-                    None
-                } else {
-                    Some(select_hls_audio(formats).ok_or_else(|| {
-                        "YouTube did not return an HLS audio stream".to_string()
-                    })?)
-                };
+            // A silent variant with no separate audio track falls through to the muxed stream.
+            let audio = if format_has_audio(hls) {
+                Some(None)
+            } else {
+                select_hls_audio(formats).map(Some)
+            };
+            if let (true, Some(audio_url)) = (selected_height >= target_height, audio) {
                 let stream = stream_from_format(hls, audio_url, true)?;
                 verify_youtube_stream(&stream).await?;
                 return Ok(YoutubeStream { duration, ..stream });

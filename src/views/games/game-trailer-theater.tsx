@@ -6,7 +6,7 @@ import { useRailScroll } from "@/hooks/use-rail-scroll";
 import { useT } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { openUrl } from "@/lib/window";
-import { loadGameMicrotrailer } from "@/lib/games/catalog";
+import { forgetGameMicrotrailer, loadGameMicrotrailer } from "@/lib/games/catalog";
 import {
   YOUTUBE_TRAILER_HEIGHTS,
   activeTrailerSource,
@@ -112,16 +112,16 @@ export function GameTrailerTheater({
     [indicator, setIndicator] = useState<{ x: number; width: number } | null>(null),
     [ambient, setAmbient] = useState(storedAmbient),
     [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null),
-    // Per source: the load generation (part of every load's identity) and the playback
-    // retries spent since its last fresh start.
-    [loads, setLoads] = useState<Readonly<Record<string, { generation: number; retries: number }>>>(
-      {},
-    ),
-    [slowKey, setSlowKey] = useState<string | null>(null);
+    // Manual revivals per source, and playback retries per request since the last revival.
+    [revivals, setRevivals] = useState<Readonly<Record<string, number>>>({}),
+    [retries, setRetries] = useState<Readonly<Record<string, number>>>({}),
+    [slowKey, setSlowKey] = useState<string | null>(null),
+    [mutedChoice, setMutedChoice] = useState(false);
   const stage = useRef<HTMLDivElement>(null),
     queue = useRef<HTMLDivElement>(null),
     rail = useRailScroll(),
-    focused = useRef(false);
+    focused = useRef(false),
+    placed = useRef<HTMLElement | null>(null);
   const filters = useRef<HTMLDivElement>(null);
   const bindRail = rail.ref;
   // A stable callback ref: an inline one would detach and reattach the rail on every render.
@@ -142,16 +142,22 @@ export function GameTrailerTheater({
         ? [...YOUTUBE_TRAILER_HEIGHTS]
         : [];
   const height = nearestTrailerHeight(offered, choice);
+  // "Best" (no cap) only ever comes from the app setting; the menu offers real heights.
   const youtubeQuality: Quality | undefined =
     source?.kind === "youtube"
-      ? height
-        ? (`${height}p` as Quality)
-        : resolveTrailerQuality(settings.trailerQuality)
+      ? choice === Number.MAX_SAFE_INTEGER
+        ? "best"
+        : height
+          ? (`${height}p` as Quality)
+          : resolveTrailerQuality(settings.trailerQuality)
       : undefined;
   const requestKey = source ? `${source.key}@${youtubeQuality ?? ""}` : "";
-  const load = source ? loads[source.key] : undefined;
+  // A manual revival restarts the whole source; a playback retry is spent per quality, so a
+  // newly picked YouTube rendition gets its own.
+  const revival = source ? (revivals[source.key] ?? 0) : 0,
+    retry = retries[`${requestKey}~${revival}`] ?? 0;
   // Changes on every retry, so the request and the player both start over.
-  const loadKey = `${requestKey}#${load?.generation ?? 0}`;
+  const loadKey = `${requestKey}#${revival}.${retry}`;
   const sourceKey = source?.key;
   const markFailed = (key: string) => setFailed((previous) => new Set(previous).add(key));
   const skip = () => {
@@ -222,30 +228,30 @@ export function GameTrailerTheater({
   // trailer once more before moving on.
   const playbackFailed = () => {
     if (!source) return;
-    if ((load?.retries ?? 0) >= PLAYBACK_RETRIES) {
+    if (retry >= PLAYBACK_RETRIES) {
       skip();
       return;
     }
     if (source.kind === "youtube" && youtubeQuality) forgetTrailer(source.id, youtubeQuality);
-    const key = source.key;
-    setLoads((previous) => ({
-      ...previous,
-      [key]: {
-        generation: (previous[key]?.generation ?? 0) + 1,
-        retries: (previous[key]?.retries ?? 0) + 1,
-      },
-    }));
+    if (source.kind === "clip") forgetGameMicrotrailer(source.appId);
+    const key = `${requestKey}~${revival}`;
+    // hls.js and the video element can both report one failure; count it once.
+    setRetries((previous) =>
+      (previous[key] ?? 0) === retry ? { ...previous, [key]: retry + 1 } : previous,
+    );
   };
   // Gives failed sources a clean start: no cached failure, a new load identity and a full
   // retry budget. A slow source the viewer skipped never failed, so its request carries on.
   const revive = (items: HeroTrailerSource[]) => {
     const dead = items.filter((item) => failed.has(item.key));
     if (!dead.length) return;
-    for (const item of dead) if (item.kind === "youtube") forgetTrailerVideo(item.id);
-    setLoads((previous) => {
+    for (const item of dead) {
+      if (item.kind === "youtube") forgetTrailerVideo(item.id);
+      if (item.kind === "clip") forgetGameMicrotrailer(item.appId);
+    }
+    setRevivals((previous) => {
       const next = { ...previous };
-      for (const item of dead)
-        next[item.key] = { generation: (previous[item.key]?.generation ?? 0) + 1, retries: 0 };
+      for (const item of dead) next[item.key] = (previous[item.key] ?? 0) + 1;
       return next;
     });
     setFailed((previous) => {
@@ -256,12 +262,20 @@ export function GameTrailerTheater({
   };
   useEffect(() => {
     const node = stage.current;
-    if (!node || focused.current) return;
+    const dialog = node?.closest("[role=dialog]");
+    if (!node || !dialog) return;
+    // After the first landing, only step in when a replaced player took focus with it;
+    // focus on a queue card or another control stays where the viewer put it.
+    const held = document.activeElement;
+    const own = held === placed.current;
+    if (focused.current && !own && held && held !== document.body && dialog.contains(held)) return;
     // Land on play/pause so shortcuts work at once and arrows still move between controls.
     const target =
       node.querySelector<HTMLElement>(".games-player-control-row button") ??
-      node.closest("[role=dialog]")?.querySelector<HTMLElement>(".games-theater-close");
+      dialog.querySelector<HTMLElement>(".games-theater-close");
     target?.focus({ preventScroll: true });
+    // A stand-in chosen while loading gives way to play/pause once the trailer arrives.
+    placed.current = url ? null : (target ?? null);
     if (url) focused.current = true;
   }, [url]);
   useEffect(() => {
@@ -396,7 +410,9 @@ export function GameTrailerTheater({
                 intentional
                 pinned
                 cinema
-                startMuted={false}
+                // The viewer's own mute survives quality changes, retries and Next.
+                startMuted={mutedChoice}
+                onMutedChoice={setMutedChoice}
                 rate={rate}
                 knownDuration={source.kind === "youtube" ? resolved?.duration : undefined}
                 quality={source.kind === "steam" ? height : undefined}
