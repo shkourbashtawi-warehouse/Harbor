@@ -102,3 +102,27 @@ test("manual trailer prefetch starts the seekable download path", async () => {
   await flushPromises();
   assert.deepEqual(calls, ["fetch_trailer"]);
 });
+
+test("forgetting a video keeps an in-flight download and refetches a completed one", async () => {
+  const downloads: Array<(info: unknown) => void> = [];
+  const h = trailer((command) =>
+    command === "fetch_trailer"
+      ? new Promise((resolve) => downloads.push(resolve))
+      : Promise.reject(new Error("unexpected")),
+  );
+  const { fetchTrailer, forgetTrailerVideo } = h.exports;
+  const first = fetchTrailer("fixture", "720p", true);
+  forgetTrailerVideo("fixture");
+  const joined = fetchTrailer("fixture", "720p", true);
+  await flushPromises();
+  assert.equal(downloads.length, 1, "a second native download never targets the same file");
+  downloads[0]({ file_path: "fixture.mp4" });
+  assert.equal((await first).file_path, "fixture.mp4");
+  assert.equal((await joined).file_path, "fixture.mp4");
+  forgetTrailerVideo("fixture");
+  const retry = fetchTrailer("fixture", "720p", true);
+  await flushPromises();
+  assert.equal(downloads.length, 2, "a completed resolution is fetched again");
+  downloads[1]({ file_path: "fixture.mp4" });
+  await retry;
+});

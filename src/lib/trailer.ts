@@ -25,6 +25,10 @@ const STREAM_CACHE_TTL_MS = 30 * 60_000;
 
 const cache = new Map<string, Promise<TrailerInfo | null>>();
 const streamCache = new Map<string, { expires: number; request: Promise<TrailerInfo | null> }>();
+// Native downloads still running, keyed like `cache`. Each key maps to one output file, so a
+// request that finds one here joins it: cache invalidation or a UI timeout never starts a
+// second process writing the same file.
+const nativeDownloads = new Map<string, Promise<TrailerInfo | null>>();
 const prefetchQueue: Array<() => Promise<unknown>> = [];
 let prefetchActive = false;
 
@@ -84,12 +88,19 @@ export function fetchTrailer(
     cache.set(key, hit);
     return hit;
   }
-  const extract = invoke<TrailerInfo>("fetch_trailer", { videoId, quality }).catch(
-    (error: unknown) => {
-      console.error("[harbor::trailer] fetch failed", { videoId, quality, error });
-      return null;
-    },
-  );
+  let extract = nativeDownloads.get(key);
+  if (!extract) {
+    const download = invoke<TrailerInfo>("fetch_trailer", { videoId, quality })
+      .catch((error: unknown) => {
+        console.error("[harbor::trailer] fetch failed", { videoId, quality, error });
+        return null;
+      })
+      .finally(() => {
+        if (nativeDownloads.get(key) === download) nativeDownloads.delete(key);
+      });
+    nativeDownloads.set(key, download);
+    extract = download;
+  }
   const p: Promise<TrailerInfo | null> = new Promise<TrailerInfo | null>((resolve) => {
     const timeout = setTimeout(() => {
       console.error("[harbor::trailer] fetch timed out", {
@@ -215,7 +226,8 @@ export function prefetchTrailerDownload(
   void fetchTrailer(videoId, quality, true);
 }
 
-/** Drops every cached resolution of a video, whatever quality it was asked for. */
+/** Drops every cached resolution of a video, whatever quality it was asked for. A download
+ *  still in flight keeps running and the next request joins it. */
 export function forgetTrailerVideo(videoId: string): void {
   for (const map of [streamCache, cache] as Map<string, unknown>[]) {
     for (const key of [...map.keys()]) if (key.startsWith(`${videoId}:`)) map.delete(key);

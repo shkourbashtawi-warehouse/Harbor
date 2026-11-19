@@ -68,6 +68,7 @@ export function hookHarness(
     ...Object.values(globals),
   );
   return {
+    exports: api,
     render(args?: any) {
       ri = si = mi = ei = 0;
       pending = [];
